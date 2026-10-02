@@ -1,6 +1,6 @@
 {
   "appId": "de.lager.notizbuch",
-  "appName": "Lager-Notizbuch",
+  "appName": "F8 Notizbuch",
   "webDir": "public",
   "server": {
     "cleartext": true
