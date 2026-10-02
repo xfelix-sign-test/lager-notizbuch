@@ -266,7 +266,7 @@ app.use(
         saveUninitialized: false,
         cookie: {
             httpOnly: true,
-            sameSite: "lax",
+            sameSite: "none",
             secure: false,
             maxAge: 1000 * 60 * 60 * 8
         }
@@ -594,6 +594,33 @@ app.get("/api/me", requireLogin, async (req, res) => {
         username: req.user.username,
         is_admin: Number(req.user.is_admin) === 1,
         settings
+    });
+});
+
+app.post("/api/sync", requireLogin, async (req, res) => {
+    const userId = req.user.id;
+    const lastSync = req.body?.lastSync || "1970-01-01 00:00:00";
+
+    const notes = await db.all(
+        "SELECT * FROM notes WHERE user_id = ? AND updated_at > ?",
+        userId, lastSync
+    );
+
+    const contacts = await db.all(
+        "SELECT * FROM contacts WHERE user_id = ? AND updated_at > ?",
+        userId, lastSync
+    );
+
+    const settings = await db.get(
+        "SELECT * FROM user_settings WHERE user_id = ?",
+        userId
+    );
+
+    res.json({
+        notes,
+        contacts,
+        settings,
+        syncTime: new Date().toISOString()
     });
 });
 

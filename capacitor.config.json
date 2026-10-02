@@ -3,6 +3,6 @@
   "appName": "Lager-Notizbuch",
   "webDir": "public",
   "server": {
-    "cleartext": false
+    "cleartext": true
   }
 }

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../api-config.js";
 import {
     localGetAll,
     localPut,
@@ -43,7 +44,7 @@ export async function syncWithServer() {
          * in server.js ergänzt.
          */
 
-        const response = await fetch(
+        const response = await fetch(API_BASE_URL + 
             "/api/sync",
             {
                 method: "POST",
