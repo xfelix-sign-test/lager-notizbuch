@@ -1,0 +1,1817 @@
+const menuCards = document.querySelectorAll(".menu-card");
+
+const menuGrid = document.getElementById("menuGrid");
+const welcome = document.getElementById("welcome");
+const sectionView = document.getElementById("sectionView");
+const sectionContent = document.getElementById("sectionContent");
+const backButton = document.getElementById("backButton");
+const usernameDisplay = document.getElementById("usernameDisplay");
+
+let currentSection = null;
+let currentNotes = [];
+let currentContacts = [];
+
+let editingNoteId = null;
+let editingContactId = null;
+
+
+/* =========================================
+   BEREICHSNAMEN
+   ========================================= */
+
+const sectionNames = {
+    programme: "Programme",
+    telefonverzeichnis: "Telefonverzeichnis",
+    ablaeufe: "Abläufe",
+    merke: "Merke",
+    extras: "Extras",
+    einstellungen: "Einstellungen"
+};
+
+
+/* =========================================
+   HTML SICHER DARSTELLEN
+   ========================================= */
+
+function escapeHtml(value) {
+
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+
+/* =========================================
+   LOGIN PRÜFEN
+   ========================================= */
+
+async function checkLogin() {
+
+    try {
+
+        const response = await fetch("/api/me");
+
+        if (!response.ok) {
+            window.location.href = "/";
+            return;
+        }
+
+        const user = await response.json();
+
+        if (!user.authenticated) {
+            window.location.href = "/";
+            return;
+        }
+
+        usernameDisplay.textContent =
+            user.settings?.display_name ||
+            user.username;
+
+        if (user.settings?.theme) {
+            document.body.dataset.theme =
+                user.settings.theme;
+        }
+
+        if (user.settings?.compact_mode) {
+            document.body.classList.add("compact-mode");
+        }
+
+    } catch (error) {
+
+        console.error(error);
+
+        window.location.href = "/";
+    }
+}
+
+
+/* =========================================
+   BEREICH ÖFFNEN
+   ========================================= */
+
+async function openSection(section) {
+
+    currentSection = section;
+
+    menuGrid.classList.add("hidden");
+    welcome.classList.add("hidden");
+    sectionView.classList.remove("hidden");
+
+    if (section === "telefonverzeichnis") {
+
+        await renderContacts();
+
+        return;
+    }
+
+    if (section === "einstellungen") {
+
+        await renderSettings();
+
+        return;
+    }
+
+    await renderNotes(section);
+}
+
+
+/* =========================================
+   NOTIZBEREICH
+   ========================================= */
+
+async function renderNotes(category) {
+
+    sectionContent.innerHTML = `
+
+        <div class="section-heading">
+
+            <div>
+
+                <h2>
+                    ${escapeHtml(sectionNames[category])}
+                </h2>
+
+                <p>
+                    Einträge verwalten
+                </p>
+
+            </div>
+
+            <button
+                id="addNoteButton"
+                class="primary-button"
+                type="button"
+            >
+                + Eintrag hinzufügen
+            </button>
+
+        </div>
+
+
+        <div class="search-box">
+
+            <span class="search-icon">
+                🔎
+            </span>
+
+            <input
+                id="noteSearch"
+                type="search"
+                placeholder="Überschrift suchen..."
+                autocomplete="off"
+            >
+
+        </div>
+
+
+        <div
+            id="notesList"
+            class="notes-list"
+        >
+
+            <div class="loading">
+                Lade Einträge...
+            </div>
+
+        </div>
+    `;
+
+
+    document
+        .getElementById("addNoteButton")
+        .addEventListener("click", () => {
+
+            openNoteModal();
+
+        });
+
+
+    document
+        .getElementById("noteSearch")
+        .addEventListener("input", (event) => {
+
+            renderNotesList(
+                currentNotes,
+                event.target.value
+            );
+
+        });
+
+
+    try {
+
+        const response = await fetch(
+            `/api/notes?category=${encodeURIComponent(category)}`
+        );
+
+        if (!response.ok) {
+
+            const error =
+                await response.json().catch(() => ({}));
+
+            throw new Error(
+                error.error ||
+                "Einträge konnten nicht geladen werden."
+            );
+        }
+
+        currentNotes = await response.json();
+
+        renderNotesList(currentNotes);
+
+    } catch (error) {
+
+        console.error(error);
+
+        showError(error.message);
+
+    }
+}
+
+
+/* =========================================
+   NOTIZLISTE
+   NUR ÜBERSCHRIFTEN
+   ========================================= */
+
+function renderNotesList(
+    notes,
+    searchTerm = ""
+) {
+
+    const list =
+        document.getElementById("notesList");
+
+    if (!list) {
+        return;
+    }
+
+
+    const search =
+        searchTerm.trim().toLowerCase();
+
+
+    const filteredNotes =
+        notes.filter((note) => {
+
+            return note.title
+                .toLowerCase()
+                .includes(search);
+
+        });
+
+
+    if (!filteredNotes.length) {
+
+        list.innerHTML = `
+
+            <div class="empty-state">
+
+                <div class="empty-icon">
+                    ${search ? "🔎" : "+"}
+                </div>
+
+                <h3>
+                    ${
+                        search
+                            ? "Keine Treffer"
+                            : "Noch keine Einträge"
+                    }
+                </h3>
+
+                <p>
+                    ${
+                        search
+                            ? "Es wurde keine passende Überschrift gefunden."
+                            : "Lege den ersten Eintrag an."
+                    }
+                </p>
+
+            </div>
+        `;
+
+        return;
+    }
+
+
+    list.innerHTML =
+        filteredNotes.map((note) => `
+
+            <article
+                class="note-title-card"
+                data-note-open="${note.id}"
+            >
+
+                <div class="note-title-icon">
+                    ›
+                </div>
+
+                <div class="note-title-text">
+
+                    <h3>
+                        ${escapeHtml(note.title)}
+                    </h3>
+
+                </div>
+
+                <div class="note-title-arrow">
+                    ›
+                </div>
+
+            </article>
+
+        `).join("");
+
+
+    document
+        .querySelectorAll("[data-note-open]")
+        .forEach((card) => {
+
+            card.addEventListener("click", () => {
+
+                const id =
+                    Number(card.dataset.noteOpen);
+
+                openNoteView(id);
+
+            });
+
+        });
+}
+
+
+/* =========================================
+   EINZELNE NOTIZ ANZEIGEN
+   ========================================= */
+
+function openNoteView(id) {
+
+    const note =
+        currentNotes.find(
+            (item) =>
+                Number(item.id) === Number(id)
+        );
+
+
+    if (!note) {
+        return;
+    }
+
+
+    sectionContent.innerHTML = `
+
+        <div class="detail-topbar">
+
+            <button
+                id="noteBackButton"
+                class="back-button"
+                type="button"
+            >
+                ← Zurück
+            </button>
+
+        </div>
+
+
+        <article class="note-detail">
+
+            <div class="note-detail-header">
+
+                <div>
+
+                    <div class="detail-category">
+                        ${escapeHtml(
+                            sectionNames[currentSection]
+                        )}
+                    </div>
+
+                    <h2>
+                        ${escapeHtml(note.title)}
+                    </h2>
+
+                </div>
+
+
+                <div class="data-card-actions">
+
+                    <button
+                        id="editCurrentNote"
+                        class="small-button"
+                        type="button"
+                    >
+                        Bearbeiten
+                    </button>
+
+                    <button
+                        id="deleteCurrentNote"
+                        class="small-button danger"
+                        type="button"
+                    >
+                        Löschen
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <div class="note-detail-content">
+
+                ${
+                    note.content
+                        ? escapeHtml(note.content)
+                            .replaceAll("\n", "<br>")
+                        : "<span class='muted-text'>Kein Text hinterlegt.</span>"
+                }
+
+            </div>
+
+        </article>
+    `;
+
+
+    document
+        .getElementById("noteBackButton")
+        .addEventListener("click", () => {
+
+            renderNotes(currentSection);
+
+        });
+
+
+    document
+        .getElementById("editCurrentNote")
+        .addEventListener("click", () => {
+
+            openNoteModal(note);
+
+        });
+
+
+    document
+        .getElementById("deleteCurrentNote")
+        .addEventListener("click", async () => {
+
+            await deleteNote(note.id);
+
+        });
+}
+
+
+/* =========================================
+   NOTIZ MODAL
+   ========================================= */
+
+function openNoteModal(note = null) {
+
+    editingNoteId =
+        note ? Number(note.id) : null;
+
+
+    document.getElementById(
+        "noteModalTitle"
+    ).textContent =
+        note
+            ? "Eintrag bearbeiten"
+            : "Eintrag hinzufügen";
+
+
+    document.getElementById(
+        "noteId"
+    ).value =
+        note?.id || "";
+
+
+    document.getElementById(
+        "noteTitle"
+    ).value =
+        note?.title || "";
+
+
+    document.getElementById(
+        "noteContent"
+    ).value =
+        note?.content || "";
+
+
+    document
+        .getElementById("noteModal")
+        .classList.remove("hidden");
+
+
+    document
+        .getElementById("noteTitle")
+        .focus();
+}
+
+
+/* =========================================
+   NOTIZ SPEICHERN
+   ========================================= */
+
+document
+    .getElementById("noteForm")
+    .addEventListener("submit", async (event) => {
+
+        event.preventDefault();
+
+
+        const title =
+            document
+                .getElementById("noteTitle")
+                .value
+                .trim();
+
+
+        const content =
+            document
+                .getElementById("noteContent")
+                .value;
+
+
+        if (!title) {
+
+            alert(
+                "Bitte eine Überschrift eingeben."
+            );
+
+            return;
+        }
+
+
+        const url =
+            editingNoteId
+                ? `/api/notes/${editingNoteId}`
+                : "/api/notes";
+
+
+        const method =
+            editingNoteId
+                ? "PUT"
+                : "POST";
+
+
+        try {
+
+            const response =
+                await fetch(url, {
+
+                    method,
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            category:
+                                currentSection,
+
+                            title,
+
+                            content
+
+                        })
+
+                });
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.error ||
+                    "Speichern fehlgeschlagen."
+                );
+            }
+
+
+            closeModal("noteModal");
+
+
+            await renderNotes(
+                currentSection
+            );
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(error.message);
+
+        }
+
+    });
+
+
+/* =========================================
+   NOTIZ LÖSCHEN
+   ========================================= */
+
+async function deleteNote(id) {
+
+    const confirmed =
+        confirm(
+            "Diesen Eintrag wirklich löschen?"
+        );
+
+
+    if (!confirmed) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/notes/${id}`,
+                {
+                    method: "DELETE"
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                "Löschen fehlgeschlagen."
+            );
+        }
+
+
+        await renderNotes(
+            currentSection
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(error.message);
+
+    }
+}
+
+
+/* =========================================
+   TELEFONVERZEICHNIS
+   ========================================= */
+
+async function renderContacts() {
+
+    sectionContent.innerHTML = `
+
+        <div class="section-heading">
+
+            <div>
+
+                <h2>
+                    Telefonverzeichnis
+                </h2>
+
+                <p>
+                    Kontakte und interne Telefonnummern.
+                </p>
+
+            </div>
+
+            <button
+                id="addContactButton"
+                class="primary-button"
+                type="button"
+            >
+                + Kontakt hinzufügen
+            </button>
+
+        </div>
+
+
+        <div class="search-box">
+
+            <span class="search-icon">
+                🔎
+            </span>
+
+            <input
+                id="contactSearch"
+                type="search"
+                placeholder="Name, Filiale oder Nummer suchen..."
+                autocomplete="off"
+            >
+
+        </div>
+
+
+        <div
+            id="contactsList"
+            class="contacts-list"
+        >
+
+            <div class="loading">
+                Lade Kontakte...
+            </div>
+
+        </div>
+    `;
+
+
+    document
+        .getElementById("addContactButton")
+        .addEventListener("click", () => {
+
+            openContactModal();
+
+        });
+
+
+    document
+        .getElementById("contactSearch")
+        .addEventListener("input", (event) => {
+
+            renderContactsList(
+                currentContacts,
+                event.target.value
+            );
+
+        });
+
+
+    try {
+
+        const response =
+            await fetch("/api/contacts");
+
+
+        if (!response.ok) {
+
+            const error =
+                await response.json().catch(() => ({}));
+
+            throw new Error(
+                error.error ||
+                "Telefonverzeichnis konnte nicht geladen werden."
+            );
+        }
+
+
+        currentContacts =
+            await response.json();
+
+
+        renderContactsList(
+            currentContacts
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        showError(error.message);
+
+    }
+}
+
+
+/* =========================================
+   KONTAKTE RENDERN
+   ========================================= */
+
+function renderContactsList(
+    contacts,
+    searchTerm = ""
+) {
+
+    const list =
+        document.getElementById(
+            "contactsList"
+        );
+
+
+    if (!list) {
+        return;
+    }
+
+
+    const search =
+        searchTerm.trim().toLowerCase();
+
+
+    const filtered =
+        contacts.filter((contact) => {
+
+            const searchable = [
+
+                contact.name,
+                contact.branch,
+                contact.extension,
+                contact.number,
+                contact.mobile
+
+            ]
+                .join(" ")
+                .toLowerCase();
+
+
+            return searchable.includes(search);
+
+        });
+
+
+    if (!filtered.length) {
+
+        list.innerHTML = `
+
+            <div class="empty-state">
+
+                <div class="empty-icon">
+                    ${search ? "🔎" : "☎"}
+                </div>
+
+                <h3>
+                    ${
+                        search
+                            ? "Keine Treffer"
+                            : "Noch keine Kontakte"
+                    }
+                </h3>
+
+                <p>
+                    ${
+                        search
+                            ? "Kein passender Kontakt gefunden."
+                            : "Lege den ersten Kontakt an."
+                    }
+                </p>
+
+            </div>
+        `;
+
+        return;
+    }
+
+
+    list.innerHTML =
+        filtered.map((contact) => `
+
+            <article
+                class="contact-card"
+            >
+
+                <div class="contact-main">
+
+                    <h3>
+                        ${escapeHtml(contact.name)}
+                    </h3>
+
+                    ${
+                        contact.branch
+                            ? `
+                                <span class="contact-branch">
+                                    ${escapeHtml(contact.branch)}
+                                </span>
+                            `
+                            : ""
+                    }
+
+                </div>
+
+
+                <div class="contact-number">
+
+                    <div>
+
+                        <span>
+                            Durchwahl
+                        </span>
+
+                        <strong>
+                            ${escapeHtml(
+                                contact.extension
+                            )}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Nummer
+                        </span>
+
+                        <strong>
+                            ${escapeHtml(
+                                contact.number
+                            )}
+                        </strong>
+
+                    </div>
+
+
+                    ${
+                        contact.mobile
+                            ? `
+                                <div>
+
+                                    <span>
+                                        Mobil
+                                    </span>
+
+                                    <strong>
+                                        ${escapeHtml(
+                                            contact.mobile
+                                        )}
+                                    </strong>
+
+                                </div>
+                            `
+                            : ""
+                    }
+
+                </div>
+
+
+                <div class="data-card-actions">
+
+                    <button
+                        class="small-button"
+                        type="button"
+                        data-edit-contact="${contact.id}"
+                    >
+                        Bearbeiten
+                    </button>
+
+                    <button
+                        class="small-button danger"
+                        type="button"
+                        data-delete-contact="${contact.id}"
+                    >
+                        Löschen
+                    </button>
+
+                </div>
+
+            </article>
+
+        `).join("");
+
+
+    document
+        .querySelectorAll(
+            "[data-edit-contact]"
+        )
+        .forEach((button) => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    const id =
+                        Number(
+                            button.dataset.editContact
+                        );
+
+
+                    const contact =
+                        currentContacts.find(
+                            (item) =>
+                                Number(item.id) === id
+                        );
+
+
+                    if (contact) {
+                        openContactModal(contact);
+                    }
+
+                }
+            );
+
+        });
+
+
+    document
+        .querySelectorAll(
+            "[data-delete-contact]"
+        )
+        .forEach((button) => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    deleteContact(
+                        Number(
+                            button.dataset.deleteContact
+                        )
+                    );
+
+                }
+            );
+
+        });
+}
+
+
+/* =========================================
+   KONTAKT MODAL
+   ========================================= */
+
+function openContactModal(
+    contact = null
+) {
+
+    editingContactId =
+        contact
+            ? Number(contact.id)
+            : null;
+
+
+    document.getElementById(
+        "contactModalTitle"
+    ).textContent =
+        contact
+            ? "Kontakt bearbeiten"
+            : "Kontakt hinzufügen";
+
+
+    document.getElementById(
+        "contactId"
+    ).value =
+        contact?.id || "";
+
+
+    document.getElementById(
+        "contactName"
+    ).value =
+        contact?.name || "";
+
+
+    document.getElementById(
+        "contactBranch"
+    ).value =
+        contact?.branch || "";
+
+
+    document.getElementById(
+        "contactExtension"
+    ).value =
+        contact?.extension || "";
+
+
+    document.getElementById(
+        "contactNumber"
+    ).value =
+        contact?.number || "";
+
+
+    document.getElementById(
+        "contactMobile"
+    ).value =
+        contact?.mobile || "";
+
+
+    document
+        .getElementById("contactModal")
+        .classList.remove("hidden");
+
+
+    document
+        .getElementById("contactName")
+        .focus();
+}
+
+
+/* =========================================
+   KONTAKT SPEICHERN
+   ========================================= */
+
+document
+    .getElementById("contactForm")
+    .addEventListener("submit", async (event) => {
+
+        event.preventDefault();
+
+
+        const data = {
+
+            name:
+                document
+                    .getElementById("contactName")
+                    .value
+                    .trim(),
+
+            branch:
+                document
+                    .getElementById("contactBranch")
+                    .value
+                    .trim(),
+
+            extension:
+                document
+                    .getElementById("contactExtension")
+                    .value
+                    .trim(),
+
+            number:
+                document
+                    .getElementById("contactNumber")
+                    .value
+                    .trim(),
+
+            mobile:
+                document
+                    .getElementById("contactMobile")
+                    .value
+                    .trim()
+
+        };
+
+
+        if (!data.name) {
+
+            alert("Bitte einen Namen eingeben.");
+
+            return;
+        }
+
+
+        if (!/^\d{3}$/.test(data.extension)) {
+
+            alert(
+                "Die Durchwahl muss genau 3 Ziffern haben."
+            );
+
+            return;
+        }
+
+
+        if (!/^\d{3}$/.test(data.number)) {
+
+            alert(
+                "Die Nummer muss genau 3 Ziffern haben."
+            );
+
+            return;
+        }
+
+
+        if (
+            data.mobile &&
+            !/^\d{1,20}$/.test(data.mobile)
+        ) {
+
+            alert(
+                "Die Mobilnummer darf maximal 20 Ziffern enthalten."
+            );
+
+            return;
+        }
+
+
+        const url =
+            editingContactId
+                ? `/api/contacts/${editingContactId}`
+                : "/api/contacts";
+
+
+        const method =
+            editingContactId
+                ? "PUT"
+                : "POST";
+
+
+        try {
+
+            const response =
+                await fetch(url, {
+
+                    method,
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify(data)
+
+                });
+
+
+            const result =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    result.error ||
+                    "Kontakt konnte nicht gespeichert werden."
+                );
+            }
+
+
+            closeModal("contactModal");
+
+
+            await renderContacts();
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(error.message);
+
+        }
+
+    });
+
+
+/* =========================================
+   KONTAKT LÖSCHEN
+   ========================================= */
+
+async function deleteContact(id) {
+
+    const confirmed =
+        confirm(
+            "Diesen Kontakt wirklich löschen?"
+        );
+
+
+    if (!confirmed) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/contacts/${id}`,
+                {
+                    method: "DELETE"
+                }
+            );
+
+
+        const result =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                result.error ||
+                "Kontakt konnte nicht gelöscht werden."
+            );
+        }
+
+
+        await renderContacts();
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(error.message);
+
+    }
+}
+
+
+/* =========================================
+   EINSTELLUNGEN
+   ========================================= */
+
+async function renderSettings() {
+
+    try {
+
+        const response =
+            await fetch("/api/settings");
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Einstellungen konnten nicht geladen werden."
+            );
+        }
+
+
+        const settings =
+            await response.json();
+
+
+        sectionContent.innerHTML = `
+
+            <div class="section-heading">
+
+                <div>
+
+                    <h2>
+                        Einstellungen
+                    </h2>
+
+                    <p>
+                        Persönliche und optische Einstellungen
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="settings-grid">
+
+
+                <div class="settings-card">
+
+                    <h3>
+                        Benutzer
+                    </h3>
+
+
+                    <label>
+                        Angezeigter Name
+                    </label>
+
+                    <input
+                        id="displayName"
+                        type="text"
+                        maxlength="100"
+                        value="${escapeHtml(
+                            settings.display_name || ""
+                        )}"
+                    >
+
+
+                    <button
+                        id="saveSettings"
+                        class="primary-button"
+                        type="button"
+                    >
+                        Einstellungen speichern
+                    </button>
+
+                </div>
+
+
+                <div class="settings-card">
+
+                    <h3>
+                        Darstellung
+                    </h3>
+
+
+                    <label class="checkbox-label">
+
+                        <input
+                            id="compactMode"
+                            type="checkbox"
+                            ${
+                                settings.compact_mode
+                                    ? "checked"
+                                    : ""
+                            }
+                        >
+
+                        Kompakte Darstellung
+
+                    </label>
+
+
+                    <label for="theme">
+                        Farbdarstellung
+                    </label>
+
+
+                    <select id="theme">
+
+                        <option
+                            value="dark"
+                            ${
+                                settings.theme === "dark"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Dunkelblau
+                        </option>
+
+                        <option
+                            value="black"
+                            ${
+                                settings.theme === "black"
+                                    ? "selected"
+                                    : ""
+                            }
+                        >
+                            Schwarz
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="settings-card">
+
+                    <h3>
+                        Passwort ändern
+                    </h3>
+
+
+                    <label>
+                        Aktuelles Passwort
+                    </label>
+
+                    <input
+                        id="currentPassword"
+                        type="password"
+                        autocomplete="current-password"
+                    >
+
+
+                    <label>
+                        Neues Passwort
+                    </label>
+
+                    <input
+                        id="newPassword"
+                        type="password"
+                        minlength="8"
+                        autocomplete="new-password"
+                    >
+
+
+                    <button
+                        id="changePassword"
+                        class="primary-button"
+                        type="button"
+                    >
+                        Passwort ändern
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+
+
+        document
+            .getElementById("saveSettings")
+            .addEventListener(
+                "click",
+                saveSettings
+            );
+
+
+        document
+            .getElementById("changePassword")
+            .addEventListener(
+                "click",
+                changePassword
+            );
+
+
+        document
+            .getElementById("compactMode")
+            .addEventListener(
+                "change",
+                () => {
+
+                    document.body.classList.toggle(
+                        "compact-mode",
+                        document
+                            .getElementById("compactMode")
+                            .checked
+                    );
+
+                }
+            );
+
+    } catch (error) {
+
+        console.error(error);
+
+        showError(error.message);
+
+    }
+}
+
+
+/* =========================================
+   EINSTELLUNGEN SPEICHERN
+   ========================================= */
+
+async function saveSettings() {
+
+    const data = {
+
+        display_name:
+            document
+                .getElementById("displayName")
+                .value
+                .trim(),
+
+        compact_mode:
+            document
+                .getElementById("compactMode")
+                .checked,
+
+        theme:
+            document
+                .getElementById("theme")
+                .value
+
+    };
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/settings",
+                {
+
+                    method: "PUT",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify(data)
+
+                }
+            );
+
+
+        if (!response.ok) {
+
+            const result =
+                await response.json();
+
+            throw new Error(
+                result.error ||
+                "Einstellungen konnten nicht gespeichert werden."
+            );
+        }
+
+
+        usernameDisplay.textContent =
+            data.display_name ||
+            usernameDisplay.textContent;
+
+
+        document.body.dataset.theme =
+            data.theme;
+
+
+        alert(
+            "Einstellungen gespeichert."
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(error.message);
+
+    }
+}
+
+
+/* =========================================
+   PASSWORT ÄNDERN
+   ========================================= */
+
+async function changePassword() {
+
+    const currentPassword =
+        document
+            .getElementById("currentPassword")
+            .value;
+
+
+    const newPassword =
+        document
+            .getElementById("newPassword")
+            .value;
+
+
+    if (!currentPassword || !newPassword) {
+
+        alert(
+            "Bitte beide Passwörter eingeben."
+        );
+
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/settings/password",
+                {
+
+                    method: "PUT",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            current_password:
+                                currentPassword,
+
+                            new_password:
+                                newPassword
+
+                        })
+
+                }
+            );
+
+
+        const result =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                result.error ||
+                "Passwort konnte nicht geändert werden."
+            );
+        }
+
+
+        document
+            .getElementById("currentPassword")
+            .value = "";
+
+
+        document
+            .getElementById("newPassword")
+            .value = "";
+
+
+        alert(
+            "Passwort wurde geändert."
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(error.message);
+
+    }
+}
+
+
+/* =========================================
+   MODAL SCHLIESSEN
+   ========================================= */
+
+document
+    .querySelectorAll("[data-close]")
+    .forEach((button) => {
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                closeModal(
+                    button.dataset.close
+                );
+
+            }
+        );
+
+    });
+
+
+function closeModal(id) {
+
+    const modal =
+        document.getElementById(id);
+
+    if (modal) {
+        modal.classList.add("hidden");
+    }
+}
+
+
+/* =========================================
+   ZURÜCK ZUM STARTMENÜ
+   ========================================= */
+
+backButton.addEventListener(
+    "click",
+    () => {
+
+        sectionView.classList.add("hidden");
+
+        menuGrid.classList.remove("hidden");
+
+        welcome.classList.remove("hidden");
+
+        currentSection = null;
+
+    }
+);
+
+
+/* =========================================
+   MENÜ
+   ========================================= */
+
+menuCards.forEach((card) => {
+
+    card.addEventListener(
+        "click",
+        () => {
+
+            const section =
+                card.dataset.section;
+
+            console.log(
+                "Öffne Bereich:",
+                section
+            );
+
+            openSection(section);
+
+        }
+    );
+
+});
+
+
+/* =========================================
+   FEHLERANZEIGE
+   ========================================= */
+
+function showError(message) {
+
+    sectionContent.innerHTML = `
+
+        <div class="error-box">
+            ${escapeHtml(message)}
+        </div>
+    `;
+}
+
+
+/* =========================================
+   LOGOUT
+   ========================================= */
+
+document
+    .getElementById("logout")
+    .addEventListener(
+        "click",
+        async () => {
+
+            await fetch(
+                "/api/logout",
+                {
+                    method: "POST"
+                }
+            );
+
+            window.location.href = "/";
+
+        }
+    );
+
+
+/* =========================================
+   START
+   ========================================= */
+
+checkLogin();

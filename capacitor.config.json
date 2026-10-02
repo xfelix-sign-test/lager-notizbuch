@@ -1,0 +1,8 @@
+{
+  "appId": "de.lager.notizbuch",
+  "appName": "Lager-Notizbuch",
+  "webDir": "public",
+  "server": {
+    "cleartext": false
+  }
+}

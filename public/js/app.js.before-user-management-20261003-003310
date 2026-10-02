@@ -1,0 +1,2320 @@
+const menuCards = document.querySelectorAll(".menu-card");
+
+const menuGrid = document.getElementById("menuGrid");
+const welcome = document.getElementById("welcome");
+const sectionView = document.getElementById("sectionView");
+const sectionContent = document.getElementById("sectionContent");
+const backButton = document.getElementById("backButton");
+const usernameDisplay = document.getElementById("usernameDisplay");
+
+let currentSection = null;
+let currentNotes = [];
+let currentContacts = [];
+
+let editingNoteId = null;
+let editingContactId = null;
+
+
+/* =========================================
+   BEREICHSNAMEN
+   ========================================= */
+
+const sectionNames = {
+    programme: "Programme",
+    telefonverzeichnis: "Telefonverzeichnis",
+    ablaeufe: "Abläufe",
+    merke: "Merke",
+    extras: "Extras",
+    einstellungen: "Einstellungen"
+};
+
+
+/* =========================================
+   HTML SICHER DARSTELLEN
+   ========================================= */
+
+function escapeHtml(value) {
+
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+
+/* =========================================
+   LOGIN PRÜFEN
+   ========================================= */
+
+async function checkLogin() {
+
+    try {
+
+        const response = await fetch("/api/me", {
+            method: "GET",
+            credentials: "same-origin",
+            cache: "no-store"
+        });
+
+        if (!response.ok) {
+            console.error(
+                "API /api/me Fehler:",
+                response.status
+            );
+            window.location.href = "/";
+            return;
+        }
+
+        const user = await response.json();
+
+        if (!user.authenticated) {
+            console.error("Keine gültige Anmeldung.");
+            window.location.href = "/";
+            return;
+        }
+
+        console.log(
+            "Angemeldet als:",
+            user.username
+        );
+
+        /*
+         * Benutzername nur setzen, wenn das Element
+         * tatsächlich vorhanden ist.
+         */
+        if (usernameDisplay) {
+            usernameDisplay.textContent =
+                user.settings?.display_name ||
+                user.username ||
+                "";
+        }
+
+        /*
+         * Einstellungen übernehmen.
+         */
+        if (user.settings?.theme) {
+            document.body.dataset.theme =
+                user.settings.theme;
+        }
+
+        document.body.classList.toggle(
+            "compact-mode",
+            !!user.settings?.compact_mode
+        );
+
+        if (
+            user.settings?.font_size &&
+            typeof applyFontSize === "function"
+        ) {
+            applyFontSize(
+                user.settings.font_size
+            );
+        }
+
+        if (
+            user.settings?.auto_logout &&
+            typeof startAutoLogoutTimer === "function"
+        ) {
+            startAutoLogoutTimer();
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Fehler beim Login-Check:",
+            error
+        );
+
+        /*
+         * Nur echte Authentifizierungsfehler
+         * dürfen zur Login-Seite führen.
+         */
+        window.location.href = "/";
+    }
+}
+
+/* =========================================
+   AUTOMATISCHE ABMELDUNG
+   ========================================= */
+
+let autoLogoutTimer = null;
+
+function startAutoLogoutTimer() {
+
+    if (autoLogoutTimer) {
+        clearTimeout(autoLogoutTimer);
+    }
+
+    autoLogoutTimer = setTimeout(
+        async () => {
+
+            try {
+
+                await fetch(
+                    "/api/logout",
+                    {
+                        method: "POST"
+                    }
+                );
+
+            } finally {
+
+                window.location.href = "/";
+
+            }
+
+        },
+        30 * 60 * 1000
+    );
+}
+
+
+["click", "keydown", "mousemove", "touchstart", "scroll"].forEach(
+    eventName => {
+
+        document.addEventListener(
+            eventName,
+            () => {
+
+                if (
+                    settingsData &&
+                    settingsData.auto_logout
+                ) {
+                    startAutoLogoutTimer();
+                }
+
+            },
+            { passive: true }
+        );
+
+    }
+);
+
+
+/* =========================================
+   BEREICH ÖFFNEN
+   ========================================= */
+
+
+
+async function openSection(section) {
+
+    currentSection = section;
+
+    menuGrid.classList.add("hidden");
+    welcome.classList.add("hidden");
+    sectionView.classList.remove("hidden");
+
+    if (section === "telefonverzeichnis") {
+
+        await renderContacts();
+
+        return;
+    }
+
+    if (section === "einstellungen") {
+
+        await renderSettings();
+
+        return;
+    }
+
+    await renderNotes(section);
+}
+
+
+/* =========================================
+   NOTIZBEREICH
+   ========================================= */
+
+async function renderNotes(category) {
+
+    sectionContent.innerHTML = `
+
+        <div class="section-heading">
+
+            <div>
+
+                <h2>
+                    ${escapeHtml(sectionNames[category])}
+                </h2>
+
+                <p>
+                    Einträge verwalten
+                </p>
+
+            </div>
+
+            <button
+                id="addNoteButton"
+                class="primary-button"
+                type="button"
+            >
+                + Eintrag hinzufügen
+            </button>
+
+        </div>
+
+
+        <div class="search-box">
+
+            <span class="search-icon">
+                🔎
+            </span>
+
+            <input
+                id="noteSearch"
+                type="search"
+                placeholder="Überschrift suchen..."
+                autocomplete="off"
+            >
+
+        </div>
+
+
+        <div
+            id="notesList"
+            class="notes-list"
+        >
+
+            <div class="loading">
+                Lade Einträge...
+            </div>
+
+        </div>
+    `;
+
+
+    document
+        .getElementById("addNoteButton")
+        .addEventListener("click", () => {
+
+            openNoteModal();
+
+        });
+
+
+    document
+        .getElementById("noteSearch")
+        .addEventListener("input", (event) => {
+
+            renderNotesList(
+                currentNotes,
+                event.target.value
+            );
+
+        });
+
+
+    try {
+
+        const response = await fetch(
+            `/api/notes?category=${encodeURIComponent(category)}`
+        );
+
+        if (!response.ok) {
+
+            const error =
+                await response.json().catch(() => ({}));
+
+            throw new Error(
+                error.error ||
+                "Einträge konnten nicht geladen werden."
+            );
+        }
+
+        currentNotes = await response.json();
+
+        renderNotesList(currentNotes);
+
+    } catch (error) {
+
+        console.error(error);
+
+        showError(error.message);
+
+    }
+}
+
+
+/* =========================================
+   NOTIZLISTE
+   NUR ÜBERSCHRIFTEN
+   ========================================= */
+
+function renderNotesList(
+    notes,
+    searchTerm = ""
+) {
+
+    const list =
+        document.getElementById("notesList");
+
+    if (!list) {
+        return;
+    }
+
+
+    const search =
+        searchTerm.trim().toLowerCase();
+
+
+    const filteredNotes =
+        notes.filter((note) => {
+
+            return note.title
+                .toLowerCase()
+                .includes(search);
+
+        });
+
+
+    if (!filteredNotes.length) {
+
+        list.innerHTML = `
+
+            <div class="empty-state">
+
+                <div class="empty-icon">
+                    ${search ? "🔎" : "+"}
+                </div>
+
+                <h3>
+                    ${
+                        search
+                            ? "Keine Treffer"
+                            : "Noch keine Einträge"
+                    }
+                </h3>
+
+                <p>
+                    ${
+                        search
+                            ? "Es wurde keine passende Überschrift gefunden."
+                            : "Lege den ersten Eintrag an."
+                    }
+                </p>
+
+            </div>
+        `;
+
+        return;
+    }
+
+
+    list.innerHTML =
+        filteredNotes.map((note) => `
+
+            <article
+                class="note-title-card"
+                data-note-open="${note.id}"
+            >
+
+                <div class="note-title-icon">
+                    ›
+                </div>
+
+                <div class="note-title-text">
+
+                    <h3>
+                        ${escapeHtml(note.title)}
+                    </h3>
+
+                </div>
+
+                <div class="note-title-arrow">
+                    ›
+                </div>
+
+            </article>
+
+        `).join("");
+
+
+    document
+        .querySelectorAll("[data-note-open]")
+        .forEach((card) => {
+
+            card.addEventListener("click", () => {
+
+                const id =
+                    Number(card.dataset.noteOpen);
+
+                openNoteView(id);
+
+            });
+
+        });
+}
+
+
+/* =========================================
+   EINZELNE NOTIZ ANZEIGEN
+   ========================================= */
+
+function openNoteView(id) {
+
+    const note =
+        currentNotes.find(
+            (item) =>
+                Number(item.id) === Number(id)
+        );
+
+
+    if (!note) {
+        return;
+    }
+
+
+    sectionContent.innerHTML = `
+
+        <div class="detail-topbar">
+
+            <button
+                id="noteBackButton"
+                class="back-button"
+                type="button"
+            >
+                ← Zurück
+            </button>
+
+        </div>
+
+
+        <article class="note-detail">
+
+            <div class="note-detail-header">
+
+                <div>
+
+                    <div class="detail-category">
+                        ${escapeHtml(
+                            sectionNames[currentSection]
+                        )}
+                    </div>
+
+                    <h2>
+                        ${escapeHtml(note.title)}
+                    </h2>
+
+                </div>
+
+
+                <div class="data-card-actions">
+
+                    <button
+                        id="editCurrentNote"
+                        class="small-button"
+                        type="button"
+                    >
+                        Bearbeiten
+                    </button>
+
+                    <button
+                        id="deleteCurrentNote"
+                        class="small-button danger"
+                        type="button"
+                    >
+                        Löschen
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <div class="note-detail-content">
+
+                ${
+                    note.content
+                        ? escapeHtml(note.content)
+                            .replaceAll("\n", "<br>")
+                        : "<span class='muted-text'>Kein Text hinterlegt.</span>"
+                }
+
+            </div>
+
+        </article>
+    `;
+
+
+    document
+        .getElementById("noteBackButton")
+        .addEventListener("click", () => {
+
+            renderNotes(currentSection);
+
+        });
+
+
+    document
+        .getElementById("editCurrentNote")
+        .addEventListener("click", () => {
+
+            openNoteModal(note);
+
+        });
+
+
+    document
+        .getElementById("deleteCurrentNote")
+        .addEventListener("click", async () => {
+
+            await deleteNote(note.id);
+
+        });
+}
+
+
+/* =========================================
+   NOTIZ MODAL
+   ========================================= */
+
+function openNoteModal(note = null) {
+
+    editingNoteId =
+        note ? Number(note.id) : null;
+
+
+    document.getElementById(
+        "noteModalTitle"
+    ).textContent =
+        note
+            ? "Eintrag bearbeiten"
+            : "Eintrag hinzufügen";
+
+
+    document.getElementById(
+        "noteId"
+    ).value =
+        note?.id || "";
+
+
+    document.getElementById(
+        "noteTitle"
+    ).value =
+        note?.title || "";
+
+
+    document.getElementById(
+        "noteContent"
+    ).value =
+        note?.content || "";
+
+
+    document
+        .getElementById("noteModal")
+        .classList.remove("hidden");
+
+
+    document
+        .getElementById("noteTitle")
+        .focus();
+}
+
+
+/* =========================================
+   NOTIZ SPEICHERN
+   ========================================= */
+
+document
+    .getElementById("noteForm")
+    .addEventListener("submit", async (event) => {
+
+        event.preventDefault();
+
+
+        const title =
+            document
+                .getElementById("noteTitle")
+                .value
+                .trim();
+
+
+        const content =
+            document
+                .getElementById("noteContent")
+                .value;
+
+
+        if (!title) {
+
+            alert(
+                "Bitte eine Überschrift eingeben."
+            );
+
+            return;
+        }
+
+
+        const url =
+            editingNoteId
+                ? `/api/notes/${editingNoteId}`
+                : "/api/notes";
+
+
+        const method =
+            editingNoteId
+                ? "PUT"
+                : "POST";
+
+
+        try {
+
+            const response =
+                await fetch(url, {
+
+                    method,
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            category:
+                                currentSection,
+
+                            title,
+
+                            content
+
+                        })
+
+                });
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.error ||
+                    "Speichern fehlgeschlagen."
+                );
+            }
+
+
+            closeModal("noteModal");
+
+
+            await renderNotes(
+                currentSection
+            );
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(error.message);
+
+        }
+
+    });
+
+
+/* =========================================
+   NOTIZ LÖSCHEN
+   ========================================= */
+
+async function deleteNote(id) {
+
+    const confirmed =
+        confirm(
+            "Diesen Eintrag wirklich löschen?"
+        );
+
+
+    if (!confirmed) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/notes/${id}`,
+                {
+                    method: "DELETE"
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.error ||
+                "Löschen fehlgeschlagen."
+            );
+        }
+
+
+        await renderNotes(
+            currentSection
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(error.message);
+
+    }
+}
+
+
+/* =========================================
+   TELEFONVERZEICHNIS
+   ========================================= */
+
+async function renderContacts() {
+
+    sectionContent.innerHTML = `
+
+        <div class="section-heading">
+
+            <div>
+
+                <h2>
+                    Telefonverzeichnis
+                </h2>
+
+                <p>
+                    Kontakte und interne Telefonnummern.
+                </p>
+
+            </div>
+
+            <button
+                id="addContactButton"
+                class="primary-button"
+                type="button"
+            >
+                + Kontakt hinzufügen
+            </button>
+
+        </div>
+
+
+        <div class="search-box">
+
+            <span class="search-icon">
+                🔎
+            </span>
+
+            <input
+                id="contactSearch"
+                type="search"
+                placeholder="Name, Filiale oder Nummer suchen..."
+                autocomplete="off"
+            >
+
+        </div>
+
+
+        <div
+            id="contactsList"
+            class="contacts-list"
+        >
+
+            <div class="loading">
+                Lade Kontakte...
+            </div>
+
+        </div>
+    `;
+
+
+    document
+        .getElementById("addContactButton")
+        .addEventListener("click", () => {
+
+            openContactModal();
+
+        });
+
+
+    document
+        .getElementById("contactSearch")
+        .addEventListener("input", (event) => {
+
+            renderContactsList(
+                currentContacts,
+                event.target.value
+            );
+
+        });
+
+
+    try {
+
+        const response =
+            await fetch("/api/contacts");
+
+
+        if (!response.ok) {
+
+            const error =
+                await response.json().catch(() => ({}));
+
+            throw new Error(
+                error.error ||
+                "Telefonverzeichnis konnte nicht geladen werden."
+            );
+        }
+
+
+        currentContacts =
+            await response.json();
+
+
+        renderContactsList(
+            currentContacts
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        showError(error.message);
+
+    }
+}
+
+
+/* =========================================
+   KONTAKTE RENDERN
+   ========================================= */
+
+function renderContactsList(
+    contacts,
+    searchTerm = ""
+) {
+
+    const list =
+        document.getElementById(
+            "contactsList"
+        );
+
+
+    if (!list) {
+        return;
+    }
+
+
+    const search =
+        searchTerm.trim().toLowerCase();
+
+
+    const filtered =
+        contacts.filter((contact) => {
+
+            const searchable = [
+
+                contact.name,
+                contact.branch,
+                contact.extension,
+                contact.number,
+                contact.mobile
+
+            ]
+                .join(" ")
+                .toLowerCase();
+
+
+            return searchable.includes(search);
+
+        });
+
+
+    if (!filtered.length) {
+
+        list.innerHTML = `
+
+            <div class="empty-state">
+
+                <div class="empty-icon">
+                    ${search ? "🔎" : "☎"}
+                </div>
+
+                <h3>
+                    ${
+                        search
+                            ? "Keine Treffer"
+                            : "Noch keine Kontakte"
+                    }
+                </h3>
+
+                <p>
+                    ${
+                        search
+                            ? "Kein passender Kontakt gefunden."
+                            : "Lege den ersten Kontakt an."
+                    }
+                </p>
+
+            </div>
+        `;
+
+        return;
+    }
+
+
+    list.innerHTML =
+        filtered.map((contact) => `
+
+            <article
+                class="contact-card"
+            >
+
+                <div class="contact-main">
+
+                    <h3>
+                        ${escapeHtml(contact.name)}
+                    </h3>
+
+                    ${
+                        contact.branch
+                            ? `
+                                <span class="contact-branch">
+                                    ${escapeHtml(contact.branch)}
+                                </span>
+                            `
+                            : ""
+                    }
+
+                </div>
+
+
+                <div class="contact-number">
+
+                    <div>
+
+                        <span>
+                            Durchwahl
+                        </span>
+
+                        <strong>
+                            ${escapeHtml(
+                                contact.extension
+                            )}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Nummer
+                        </span>
+
+                        <strong>
+                            ${escapeHtml(
+                                contact.number
+                            )}
+                        </strong>
+
+                    </div>
+
+
+                    ${
+                        contact.mobile
+                            ? `
+                                <div>
+
+                                    <span>
+                                        Mobil
+                                    </span>
+
+                                    <strong>
+                                        ${escapeHtml(
+                                            contact.mobile
+                                        )}
+                                    </strong>
+
+                                </div>
+                            `
+                            : ""
+                    }
+
+                </div>
+
+
+                <div class="data-card-actions">
+
+                    <button
+                        class="small-button"
+                        type="button"
+                        data-edit-contact="${contact.id}"
+                    >
+                        Bearbeiten
+                    </button>
+
+                    <button
+                        class="small-button danger"
+                        type="button"
+                        data-delete-contact="${contact.id}"
+                    >
+                        Löschen
+                    </button>
+
+                </div>
+
+            </article>
+
+        `).join("");
+
+
+    document
+        .querySelectorAll(
+            "[data-edit-contact]"
+        )
+        .forEach((button) => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    const id =
+                        Number(
+                            button.dataset.editContact
+                        );
+
+
+                    const contact =
+                        currentContacts.find(
+                            (item) =>
+                                Number(item.id) === id
+                        );
+
+
+                    if (contact) {
+                        openContactModal(contact);
+                    }
+
+                }
+            );
+
+        });
+
+
+    document
+        .querySelectorAll(
+            "[data-delete-contact]"
+        )
+        .forEach((button) => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    deleteContact(
+                        Number(
+                            button.dataset.deleteContact
+                        )
+                    );
+
+                }
+            );
+
+        });
+}
+
+
+/* =========================================
+   KONTAKT MODAL
+   ========================================= */
+
+function openContactModal(
+    contact = null
+) {
+
+    editingContactId =
+        contact
+            ? Number(contact.id)
+            : null;
+
+
+    document.getElementById(
+        "contactModalTitle"
+    ).textContent =
+        contact
+            ? "Kontakt bearbeiten"
+            : "Kontakt hinzufügen";
+
+
+    document.getElementById(
+        "contactId"
+    ).value =
+        contact?.id || "";
+
+
+    document.getElementById(
+        "contactName"
+    ).value =
+        contact?.name || "";
+
+
+    document.getElementById(
+        "contactBranch"
+    ).value =
+        contact?.branch || "";
+
+
+    document.getElementById(
+        "contactExtension"
+    ).value =
+        contact?.extension || "";
+
+
+    document.getElementById(
+        "contactNumber"
+    ).value =
+        contact?.number || "";
+
+
+    document.getElementById(
+        "contactMobile"
+    ).value =
+        contact?.mobile || "";
+
+
+    document
+        .getElementById("contactModal")
+        .classList.remove("hidden");
+
+
+    document
+        .getElementById("contactName")
+        .focus();
+}
+
+
+/* =========================================
+   KONTAKT SPEICHERN
+   ========================================= */
+
+document
+    .getElementById("contactForm")
+    .addEventListener("submit", async (event) => {
+
+        event.preventDefault();
+
+
+        const data = {
+
+            name:
+                document
+                    .getElementById("contactName")
+                    .value
+                    .trim(),
+
+            branch:
+                document
+                    .getElementById("contactBranch")
+                    .value
+                    .trim(),
+
+            extension:
+                document
+                    .getElementById("contactExtension")
+                    .value
+                    .trim(),
+
+            number:
+                document
+                    .getElementById("contactNumber")
+                    .value
+                    .trim(),
+
+            mobile:
+                document
+                    .getElementById("contactMobile")
+                    .value
+                    .trim()
+
+        };
+
+
+        if (!data.name) {
+
+            alert("Bitte einen Namen eingeben.");
+
+            return;
+        }
+
+
+        if (!/^\d{3}$/.test(data.extension)) {
+
+            alert(
+                "Die Durchwahl muss genau 3 Ziffern haben."
+            );
+
+            return;
+        }
+
+
+        if (!/^\d{3}$/.test(data.number)) {
+
+            alert(
+                "Die Nummer muss genau 3 Ziffern haben."
+            );
+
+            return;
+        }
+
+
+        if (
+            data.mobile &&
+            !/^\d{1,20}$/.test(data.mobile)
+        ) {
+
+            alert(
+                "Die Mobilnummer darf maximal 20 Ziffern enthalten."
+            );
+
+            return;
+        }
+
+
+        const url =
+            editingContactId
+                ? `/api/contacts/${editingContactId}`
+                : "/api/contacts";
+
+
+        const method =
+            editingContactId
+                ? "PUT"
+                : "POST";
+
+
+        try {
+
+            const response =
+                await fetch(url, {
+
+                    method,
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify(data)
+
+                });
+
+
+            const result =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    result.error ||
+                    "Kontakt konnte nicht gespeichert werden."
+                );
+            }
+
+
+            closeModal("contactModal");
+
+
+            await renderContacts();
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(error.message);
+
+        }
+
+    });
+
+
+/* =========================================
+   KONTAKT LÖSCHEN
+   ========================================= */
+
+async function deleteContact(id) {
+
+    const confirmed =
+        confirm(
+            "Diesen Kontakt wirklich löschen?"
+        );
+
+
+    if (!confirmed) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/contacts/${id}`,
+                {
+                    method: "DELETE"
+                }
+            );
+
+
+        const result =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                result.error ||
+                "Kontakt konnte nicht gelöscht werden."
+            );
+        }
+
+
+        await renderContacts();
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(error.message);
+
+    }
+}
+
+
+/* =========================================
+   EINSTELLUNGEN
+   ========================================= */
+
+async function renderSettings() {
+
+    try {
+
+        const response = await fetch("/api/settings", {
+            cache: "no-store"
+        });
+
+        if (!response.ok) {
+            throw new Error(
+                "Einstellungen konnten nicht geladen werden."
+            );
+        }
+
+        const settings = await response.json();
+
+        sectionContent.innerHTML = `
+
+            <div class="section-heading">
+                <div>
+                    <h2>Einstellungen</h2>
+                    <p>Deine persönlichen Einstellungen für das Notizbuch</p>
+                </div>
+            </div>
+
+            <div class="settings-page">
+
+                <!-- BENUTZER -->
+                <div class="settings-card">
+
+                    <div class="settings-card-header">
+                        <div>
+                            <div class="settings-card-icon">👤</div>
+                            <div>
+                                <h3>Benutzer</h3>
+                                <p>Persönliche Angaben</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="displayName">
+                            Angezeigter Name
+                        </label>
+
+                        <input
+                            id="displayName"
+                            type="text"
+                            maxlength="100"
+                            value="${escapeHtml(settings.display_name || "")}"
+                            placeholder="Name eingeben"
+                        >
+
+                        <small>
+                            Dieser Name wird oben rechts in der Anwendung angezeigt.
+                        </small>
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="department">
+                            Abteilung
+                        </label>
+
+                        <input
+                            id="department"
+                            type="text"
+                            maxlength="100"
+                            value="${escapeHtml(settings.department || "")}"
+                            placeholder="z. B. Lager"
+                        >
+                    </div>
+
+                </div>
+
+
+                <!-- DARSTELLUNG -->
+                <div class="settings-card">
+
+                    <div class="settings-card-header">
+                        <div>
+                            <div class="settings-card-icon">🎨</div>
+                            <div>
+                                <h3>Darstellung</h3>
+                                <p>Aussehen der Anwendung</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="theme">
+                            Farbschema
+                        </label>
+
+                        <select id="theme">
+                            <option
+                                value="dark"
+                                ${settings.theme === "dark" ? "selected" : ""}
+                            >
+                                Dunkel
+                            </option>
+
+                            <option
+                                value="black"
+                                ${settings.theme === "black" ? "selected" : ""}
+                            >
+                                Tiefschwarz
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="fontSize">
+                            Schriftgröße
+                        </label>
+
+                        <select id="fontSize">
+                            <option
+                                value="small"
+                                ${settings.font_size === "small" ? "selected" : ""}
+                            >
+                                Klein
+                            </option>
+
+                            <option
+                                value="medium"
+                                ${!settings.font_size || settings.font_size === "medium" ? "selected" : ""}
+                            >
+                                Mittel
+                            </option>
+
+                            <option
+                                value="large"
+                                ${settings.font_size === "large" ? "selected" : ""}
+                            >
+                                Groß
+                            </option>
+                        </select>
+                    </div>
+
+                    <label class="settings-switch">
+                        <input
+                            id="compactMode"
+                            type="checkbox"
+                            ${settings.compact_mode ? "checked" : ""}
+                        >
+                        <span>Kompaktmodus aktivieren</span>
+                    </label>
+
+                </div>
+
+
+                <!-- NOTIZEN -->
+                <div class="settings-card">
+
+                    <div class="settings-card-header">
+                        <div>
+                            <div class="settings-card-icon">📝</div>
+                            <div>
+                                <h3>Notizen</h3>
+                                <p>Anzeige und Standardwerte</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="defaultCategory">
+                            Standardbereich
+                        </label>
+
+                        <select id="defaultCategory">
+
+                            <option
+                                value="programme"
+                                ${settings.default_category === "programme" ? "selected" : ""}
+                            >
+                                Programme
+                            </option>
+
+                            <option
+                                value="ablaeufe"
+                                ${settings.default_category === "ablaeufe" ? "selected" : ""}
+                            >
+                                Abläufe
+                            </option>
+
+                            <option
+                                value="merke"
+                                ${settings.default_category === "merke" ? "selected" : ""}
+                            >
+                                Merke
+                            </option>
+
+                            <option
+                                value="extras"
+                                ${settings.default_category === "extras" ? "selected" : ""}
+                            >
+                                Extras
+                            </option>
+
+                        </select>
+
+                        <small>
+                            Dieser Bereich wird als Standard für neue Notizen verwendet.
+                        </small>
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="noteSort">
+                            Sortierung
+                        </label>
+
+                        <select id="noteSort">
+
+                            <option
+                                value="newest"
+                                ${settings.note_sort === "newest" ? "selected" : ""}
+                            >
+                                Neueste zuerst
+                            </option>
+
+                            <option
+                                value="oldest"
+                                ${settings.note_sort === "oldest" ? "selected" : ""}
+                            >
+                                Älteste zuerst
+                            </option>
+
+                            <option
+                                value="alphabetical"
+                                ${settings.note_sort === "alphabetical" ? "selected" : ""}
+                            >
+                                Alphabetisch
+                            </option>
+
+                        </select>
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="notesPerPage">
+                            Notizen pro Seite
+                        </label>
+
+                        <select id="notesPerPage">
+
+                            <option
+                                value="10"
+                                ${Number(settings.notes_per_page) === 10 ? "selected" : ""}
+                            >
+                                10
+                            </option>
+
+                            <option
+                                value="20"
+                                ${Number(settings.notes_per_page) === 20 ? "selected" : ""}
+                            >
+                                20
+                            </option>
+
+                            <option
+                                value="50"
+                                ${Number(settings.notes_per_page) === 50 ? "selected" : ""}
+                            >
+                                50
+                            </option>
+
+                            <option
+                                value="100"
+                                ${Number(settings.notes_per_page) === 100 ? "selected" : ""}
+                            >
+                                100
+                            </option>
+
+                        </select>
+                    </div>
+
+                </div>
+
+
+                <!-- TELEFONVERZEICHNIS -->
+                <div class="settings-card">
+
+                    <div class="settings-card-header">
+                        <div>
+                            <div class="settings-card-icon">📞</div>
+                            <div>
+                                <h3>Telefonverzeichnis</h3>
+                                <p>Anzeige und Sortierung</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="contactSort">
+                            Sortierung
+                        </label>
+
+                        <select id="contactSort">
+
+                            <option
+                                value="name"
+                                ${settings.contact_sort === "name" ? "selected" : ""}
+                            >
+                                Nach Name
+                            </option>
+
+                            <option
+                                value="branch"
+                                ${settings.contact_sort === "branch" ? "selected" : ""}
+                            >
+                                Nach Filiale
+                            </option>
+
+                        </select>
+                    </div>
+
+                    <label class="settings-switch">
+                        <input
+                            id="showBranch"
+                            type="checkbox"
+                            ${settings.show_branch ? "checked" : ""}
+                        >
+                        <span>Filiale bei Kontakten anzeigen</span>
+                    </label>
+
+                </div>
+
+
+                <!-- VERHALTEN -->
+                <div class="settings-card">
+
+                    <div class="settings-card-header">
+                        <div>
+                            <div class="settings-card-icon">⚙️</div>
+                            <div>
+                                <h3>Verhalten</h3>
+                                <p>Automatisierung und Rückmeldungen</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <label class="settings-switch">
+                        <input
+                            id="notifications"
+                            type="checkbox"
+                            ${settings.notifications ? "checked" : ""}
+                        >
+                        <span>Benachrichtigungen aktivieren</span>
+                    </label>
+
+                    <label class="settings-switch">
+                        <input
+                            id="saveConfirmation"
+                            type="checkbox"
+                            ${settings.save_confirmation ? "checked" : ""}
+                        >
+                        <span>Speicherbestätigung anzeigen</span>
+                    </label>
+
+                    <label class="settings-switch">
+                        <input
+                            id="autoLogout"
+                            type="checkbox"
+                            ${settings.auto_logout ? "checked" : ""}
+                        >
+                        <span>Automatische Abmeldung nach 30 Minuten</span>
+                    </label>
+
+                </div>
+
+
+                <!-- PASSWORT -->
+                <div class="settings-card">
+
+                    <div class="settings-card-header">
+                        <div>
+                            <div class="settings-card-icon">🔐</div>
+                            <div>
+                                <h3>Sicherheit</h3>
+                                <p>Passwort ändern</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="currentPassword">
+                            Aktuelles Passwort
+                        </label>
+
+                        <input
+                            id="currentPassword"
+                            type="password"
+                            autocomplete="current-password"
+                        >
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="newPassword">
+                            Neues Passwort
+                        </label>
+
+                        <input
+                            id="newPassword"
+                            type="password"
+                            minlength="8"
+                            autocomplete="new-password"
+                        >
+
+                        <small>
+                            Das neue Passwort muss mindestens 8 Zeichen lang sein.
+                        </small>
+                    </div>
+
+                    <button
+                        id="changePassword"
+                        class="secondary-button settings-action-button"
+                        type="button"
+                    >
+                        Passwort ändern
+                    </button>
+
+                </div>
+
+
+                <!-- SYSTEM -->
+                <div class="settings-card settings-card-wide">
+
+                    <div class="settings-card-header">
+                        <div>
+                            <div class="settings-card-icon">🖥️</div>
+                            <div>
+                                <h3>System</h3>
+                                <p>Informationen über deine aktuelle Sitzung</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="system-status-box">
+
+                        <div class="system-status-row">
+                            <span>Angemeldeter Benutzer</span>
+                            <strong>
+                                ${escapeHtml(settings.display_name || "3ZVB")}
+                            </strong>
+                        </div>
+
+                        <div class="system-status-row">
+                            <span>Server</span>
+                            <strong class="status-online">
+                                ● Online
+                            </strong>
+                        </div>
+
+                        <div class="system-status-row">
+                            <span>Anwendung</span>
+                            <strong>
+                                F8 – Notizbuch
+                            </strong>
+                        </div>
+
+                        <div class="system-status-row">
+                            <span>Version</span>
+                            <strong>
+                                1.1.0
+                            </strong>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- SPEICHERN -->
+                <div class="settings-save-area">
+
+                    <button
+                        id="saveSettings"
+                        class="primary-button settings-save-button"
+                        type="button"
+                    >
+                        Einstellungen speichern
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+
+
+        document
+            .getElementById("saveSettings")
+            .addEventListener(
+                "click",
+                saveSettings
+            );
+
+
+        document
+            .getElementById("changePassword")
+            .addEventListener(
+                "click",
+                changePassword
+            );
+
+
+        document
+            .getElementById("compactMode")
+            .addEventListener(
+                "change",
+                (event) => {
+
+                    document.body.classList.toggle(
+                        "compact-mode",
+                        event.target.checked
+                    );
+
+                }
+            );
+
+
+        document
+            .getElementById("fontSize")
+            .addEventListener(
+                "change",
+                (event) => {
+
+                    applyFontSize(
+                        event.target.value
+                    );
+
+                }
+            );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        showError(error.message);
+
+    }
+}
+
+
+/* =========================================
+   EINSTELLUNGEN SPEICHERN
+   ========================================= */
+
+async function saveSettings() {
+
+    const data = {
+
+        display_name:
+            document
+                .getElementById("displayName")
+                .value
+                .trim(),
+
+        department:
+            document
+                .getElementById("department")
+                .value
+                .trim(),
+
+        theme:
+            document
+                .getElementById("theme")
+                .value,
+
+        compact_mode:
+            document
+                .getElementById("compactMode")
+                .checked,
+
+        font_size:
+            document
+                .getElementById("fontSize")
+                .value,
+
+        default_category:
+            document
+                .getElementById("defaultCategory")
+                .value,
+
+        note_sort:
+            document
+                .getElementById("noteSort")
+                .value,
+
+        notes_per_page:
+            Number(
+                document
+                    .getElementById("notesPerPage")
+                    .value
+            ),
+
+        contact_sort:
+            document
+                .getElementById("contactSort")
+                .value,
+
+        show_branch:
+            document
+                .getElementById("showBranch")
+                .checked,
+
+        notifications:
+            document
+                .getElementById("notifications")
+                .checked,
+
+        save_confirmation:
+            document
+                .getElementById("saveConfirmation")
+                .checked,
+
+        auto_logout:
+            document
+                .getElementById("autoLogout")
+                .checked
+
+    };
+
+
+    try {
+
+        const response = await fetch(
+            "/api/settings",
+            {
+                method: "PUT",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body: JSON.stringify(data)
+            }
+        );
+
+
+        const result =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                result.error ||
+                "Einstellungen konnten nicht gespeichert werden."
+            );
+
+        }
+
+
+        usernameDisplay.textContent =
+            data.display_name ||
+            usernameDisplay.textContent;
+
+
+        document.body.dataset.theme =
+            data.theme;
+
+
+        document.body.classList.toggle(
+            "compact-mode",
+            data.compact_mode
+        );
+
+
+        applyFontSize(
+            data.font_size
+        );
+
+
+        if (data.auto_logout) {
+            startAutoLogoutTimer();
+        } else if (typeof autoLogoutTimer !== "undefined" && autoLogoutTimer) {
+            clearTimeout(autoLogoutTimer);
+            autoLogoutTimer = null;
+        }
+
+
+        if (data.save_confirmation) {
+            alert("Einstellungen gespeichert.");
+        }
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(error.message);
+
+    }
+}
+
+
+/* =========================================
+   PASSWORT ÄNDERN
+   ========================================= */
+
+async function changePassword() {
+
+    const currentPassword =
+        document
+            .getElementById("currentPassword")
+            .value;
+
+
+    const newPassword =
+        document
+            .getElementById("newPassword")
+            .value;
+
+
+    if (!currentPassword || !newPassword) {
+
+        alert(
+            "Bitte beide Passwörter eingeben."
+        );
+
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/settings/password",
+                {
+
+                    method: "PUT",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+
+                            current_password:
+                                currentPassword,
+
+                            new_password:
+                                newPassword
+
+                        })
+
+                }
+            );
+
+
+        const result =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                result.error ||
+                "Passwort konnte nicht geändert werden."
+            );
+        }
+
+
+        document
+            .getElementById("currentPassword")
+            .value = "";
+
+
+        document
+            .getElementById("newPassword")
+            .value = "";
+
+
+        alert(
+            "Passwort wurde geändert."
+        );
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(error.message);
+
+    }
+}
+
+
+/* =========================================
+   MODAL SCHLIESSEN
+   ========================================= */
+
+document
+    .querySelectorAll("[data-close]")
+    .forEach((button) => {
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                closeModal(
+                    button.dataset.close
+                );
+
+            }
+        );
+
+    });
+
+
+function closeModal(id) {
+
+    const modal =
+        document.getElementById(id);
+
+    if (modal) {
+        modal.classList.add("hidden");
+    }
+}
+
+
+/* =========================================
+   ZURÜCK ZUM STARTMENÜ
+   ========================================= */
+
+backButton.addEventListener(
+    "click",
+    () => {
+
+        sectionView.classList.add("hidden");
+
+        menuGrid.classList.remove("hidden");
+
+        welcome.classList.remove("hidden");
+
+        currentSection = null;
+
+    }
+);
+
+
+/* =========================================
+   MENÜ
+   ========================================= */
+
+menuCards.forEach((card) => {
+
+    card.addEventListener(
+        "click",
+        () => {
+
+            const section =
+                card.dataset.section;
+
+            console.log(
+                "Öffne Bereich:",
+                section
+            );
+
+            openSection(section);
+
+        }
+    );
+
+});
+
+
+/* =========================================
+   FEHLERANZEIGE
+   ========================================= */
+
+function showError(message) {
+
+    sectionContent.innerHTML = `
+
+        <div class="error-box">
+            ${escapeHtml(message)}
+        </div>
+    `;
+}
+
+
+/* =========================================
+   LOGOUT
+   ========================================= */
+
+document
+    .getElementById("logout")
+    .addEventListener(
+        "click",
+        async () => {
+
+            await fetch(
+                "/api/logout",
+                {
+                    method: "POST"
+                }
+            );
+
+            window.location.href = "/";
+
+        }
+    );
+
+
+/* =========================================
+   START
+   ========================================= */
+
+checkLogin();

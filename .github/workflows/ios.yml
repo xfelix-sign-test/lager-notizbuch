@@ -1,0 +1,65 @@
+name: iOS IPA Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-ios:
+    name: Build Lager-Notizbuch iOS
+    runs-on: macos-latest
+
+    steps:
+
+      - name: Repository auschecken
+        uses: actions/checkout@v6
+
+      - name: Node installieren
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Web-App vorbereiten
+        run: |
+          mkdir -p public/mobile/local
+          cp mobile/mobile-app.js public/mobile/mobile-app.js
+          cp mobile/local/*.js public/mobile/local/
+
+      - name: Capacitor iOS synchronisieren
+        run: npx cap sync ios
+
+      - name: Xcode Version anzeigen
+        run: xcodebuild -version
+
+      - name: iOS Projekt bauen
+        run: |
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/LagerNotizbuch.xcarchive" \
+            archive \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Unsignierte IPA erstellen
+        run: |
+          mkdir -p build/Payload
+          cp -R \
+            "$RUNNER_TEMP/LagerNotizbuch.xcarchive/Products/Applications/App.app" \
+            build/Payload/
+
+          cd build
+          zip -r Lager-Notizbuch-unsigned.ipa Payload
+
+      - name: IPA hochladen
+        uses: actions/upload-artifact@v6
+        with:
+          name: Lager-Notizbuch-iOS
+          path: build/Lager-Notizbuch-unsigned.ipa

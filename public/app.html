@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>F8-Notizbuch</title>
+
+    <link
+        rel="stylesheet"
+        href="/css/style.css"
+    >
+
+</head>
+
+
+<body>
+
+
+<div class="app">
+
+
+    <!-- =====================================
+         KOPFBEREICH
+         ===================================== -->
+
+    <header class="topbar">
+
+        <div class="topbar-left">
+
+            <div class="logo-small">
+                L
+            </div>
+
+            <div>
+
+                <div class="app-title">
+                    F8-Notizbuch
+                </div>
+
+                <div class="app-subtitle">
+                    Startmenü
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="topbar-right">
+
+            <span id="usernameDisplay">
+                Benutzer
+            </span>
+
+            <button
+                id="logout"
+                class="logout-button"
+            >
+                Abmelden
+            </button>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- =====================================
+         HAUPTBEREICH
+         ===================================== -->
+
+    <main class="main-content">
+
+
+        <div
+            id="welcome"
+            class="welcome"
+        >
+
+            <h1>
+                Startmenü
+            </h1>
+
+            <p>
+                Wähle einen Bereich aus.
+            </p>
+
+        </div>
+
+
+
+        <!-- =====================================
+             STARTMENÜ
+             ===================================== -->
+
+        <div
+            id="menuGrid"
+            class="menu-grid"
+        >
+
+
+            <button
+                class="menu-card"
+                data-section="programme"
+            >
+
+                <div class="menu-icon">
+                    ▦
+                </div>
+
+                <div class="menu-text">
+
+                    <h2>
+                        Programme
+                    </h2>
+
+                    <p>
+                        Programme und Notizen
+                    </p>
+
+                </div>
+
+                <div class="menu-arrow">
+                    ›
+                </div>
+
+            </button>
+
+
+
+            <button
+                class="menu-card"
+                data-section="telefonverzeichnis"
+            >
+
+                <div class="menu-icon">
+                    ☎
+                </div>
+
+                <div class="menu-text">
+
+                    <h2>
+                        Telefonverzeichnis
+                    </h2>
+
+                    <p>
+                        Kontakte und Telefonnummern
+                    </p>
+
+                </div>
+
+                <div class="menu-arrow">
+                    ›
+                </div>
+
+            </button>
+
+
+
+            <button
+                class="menu-card"
+                data-section="ablaeufe"
+            >
+
+                <div class="menu-icon">
+                    ⇄
+                </div>
+
+                <div class="menu-text">
+
+                    <h2>
+                        Abläufe
+                    </h2>
+
+                    <p>
+                        Arbeitsabläufe und Anleitungen
+                    </p>
+
+                </div>
+
+                <div class="menu-arrow">
+                    ›
+                </div>
+
+            </button>
+
+
+
+            <button
+                class="menu-card"
+                data-section="merke"
+            >
+
+                <div class="menu-icon">
+                    ✓
+                </div>
+
+                <div class="menu-text">
+
+                    <h2>
+                        Merke
+                    </h2>
+
+                    <p>
+                        Wichtige Informationen
+                    </p>
+
+                </div>
+
+                <div class="menu-arrow">
+                    ›
+                </div>
+
+            </button>
+
+
+
+            <button
+                class="menu-card"
+                data-section="extras"
+            >
+
+                <div class="menu-icon">
+                    +
+                </div>
+
+                <div class="menu-text">
+
+                    <h2>
+                        Extras
+                    </h2>
+
+                    <p>
+                        Zusätzliche Funktionen
+                    </p>
+
+                </div>
+
+                <div class="menu-arrow">
+                    ›
+                </div>
+
+            </button>
+
+
+
+            <button
+                class="menu-card"
+                data-section="einstellungen"
+            >
+
+                <div class="menu-icon">
+                    ⚙
+                </div>
+
+                <div class="menu-text">
+
+                    <h2>
+                        Einstellungen
+                    </h2>
+
+                    <p>
+                        Anwendung und Benutzer
+                    </p>
+
+                </div>
+
+                <div class="menu-arrow">
+                    ›
+                </div>
+
+            </button>
+
+
+        </div>
+
+
+
+        <!-- =====================================
+             BEREICHSANSICHT
+             ===================================== -->
+
+        <section
+            id="sectionView"
+            class="section-view hidden"
+        >
+
+            <button
+                id="backButton"
+                class="back-button"
+            >
+                ← Startmenü
+            </button>
+
+
+            <div
+                id="sectionContent"
+                class="section-content"
+            ></div>
+
+
+        </section>
+
+
+    </main>
+
+</div>
+
+
+
+<!-- =====================================
+     NOTIZ MODAL
+     ===================================== -->
+
+<div
+    id="noteModal"
+    class="modal hidden"
+>
+
+    <div class="modal-card">
+
+        <div class="modal-header">
+
+            <h2 id="noteModalTitle">
+                Notiz
+            </h2>
+
+            <button
+                class="modal-close"
+                data-close="noteModal"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <form id="noteForm">
+
+            <input
+                type="hidden"
+                id="noteId"
+            >
+
+
+            <label for="noteTitle">
+                Überschrift
+            </label>
+
+            <input
+                id="noteTitle"
+                type="text"
+                maxlength="150"
+                required
+            >
+
+
+            <label for="noteContent">
+                Beschreibung / Text
+            </label>
+
+            <textarea
+                id="noteContent"
+                rows="8"
+                placeholder="Was macht es? Wichtige Informationen..."
+            ></textarea>
+
+
+            <div class="modal-actions">
+
+                <button
+                    type="button"
+                    class="secondary-button"
+                    data-close="noteModal"
+                >
+                    Abbrechen
+                </button>
+
+                <button
+                    type="submit"
+                    class="primary-button"
+                >
+                    Speichern
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+
+<!-- =====================================
+     KONTAKT MODAL
+     ===================================== -->
+
+<div
+    id="contactModal"
+    class="modal hidden"
+>
+
+    <div class="modal-card">
+
+        <div class="modal-header">
+
+            <h2 id="contactModalTitle">
+                Kontakt
+            </h2>
+
+            <button
+                class="modal-close"
+                data-close="contactModal"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <form id="contactForm">
+
+            <input
+                type="hidden"
+                id="contactId"
+            >
+
+
+            <label for="contactName">
+                Name *
+            </label>
+
+            <input
+                id="contactName"
+                type="text"
+                maxlength="150"
+                required
+            >
+
+
+            <label for="contactBranch">
+                Filiale
+            </label>
+
+            <input
+                id="contactBranch"
+                type="text"
+                maxlength="100"
+            >
+
+
+            <div class="form-row">
+
+                <div>
+
+                    <label for="contactExtension">
+                        Durchwahl *
+                    </label>
+
+                    <input
+                        id="contactExtension"
+                        type="text"
+                        inputmode="numeric"
+                        maxlength="3"
+                        pattern="[0-9]{3}"
+                        placeholder="000"
+                        required
+                    >
+
+                </div>
+
+
+                <div>
+
+                    <label for="contactNumber">
+                        Nummer *
+                    </label>
+
+                    <input
+                        id="contactNumber"
+                        type="text"
+                        inputmode="numeric"
+                        maxlength="3"
+                        pattern="[0-9]{3}"
+                        placeholder="000"
+                        required
+                    >
+
+                </div>
+
+            </div>
+
+
+            <label for="contactMobile">
+                Mobilnummer
+            </label>
+
+            <input
+                id="contactMobile"
+                type="text"
+                inputmode="numeric"
+                maxlength="20"
+                placeholder="Optional"
+            >
+
+
+            <div class="modal-actions">
+
+                <button
+                    type="button"
+                    class="secondary-button"
+                    data-close="contactModal"
+                >
+                    Abbrechen
+                </button>
+
+                <button
+                    type="submit"
+                    class="primary-button"
+                >
+                    Speichern
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+
+<script src="/js/app.js"></script>
+
+    <script type="module" src="/mobile/mobile-app.js"></script>
+</body>
+
+</html>

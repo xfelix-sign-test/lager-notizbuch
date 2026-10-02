@@ -1,0 +1,3431 @@
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --background: #03070d;
+    --background-light: #081525;
+    --card: #091423;
+    --border: #223247;
+    --text: #ffffff;
+    --muted: #8e9bad;
+    --red: #e30613;
+    --red-hover: #c90511;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+
+    font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+    color: var(--text);
+
+    background:
+        radial-gradient(
+            circle at 50% 10%,
+            #112a4c 0%,
+            var(--background-light) 35%,
+            var(--background) 75%
+        );
+}
+
+.login-container {
+    min-height: 100vh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 420px;
+
+    padding: 36px;
+
+    background: rgba(9, 20, 35, 0.96);
+
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    border-radius: 20px;
+
+    box-shadow:
+        0 30px 80px
+        rgba(0, 0, 0, 0.55);
+}
+
+.logo {
+    width: 58px;
+    height: 58px;
+
+    margin: 0 auto 20px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 14px;
+
+    background: var(--red);
+
+    font-size: 22px;
+    font-weight: 900;
+
+    box-shadow:
+        0 10px 30px
+        rgba(227, 6, 19, 0.25);
+}
+
+h1 {
+    margin: 0;
+
+    text-align: center;
+
+    font-size: 26px;
+}
+
+.subtitle {
+    margin: 8px 0 28px;
+
+    text-align: center;
+
+    color: var(--muted);
+
+    font-size: 14px;
+}
+
+label {
+    display: block;
+
+    margin: 18px 0 7px;
+
+    color: #cbd5e1;
+
+    font-size: 13px;
+}
+
+input {
+    width: 100%;
+
+    padding: 13px 14px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 10px;
+
+    background: #0b1727;
+
+    color: white;
+
+    font-size: 15px;
+
+    outline: none;
+}
+
+input:focus {
+    border-color: var(--red);
+
+    box-shadow:
+        0 0 0 3px
+        rgba(227, 6, 19, 0.12);
+}
+
+button {
+    width: 100%;
+
+    margin-top: 25px;
+
+    padding: 13px;
+
+    border: 0;
+
+    border-radius: 10px;
+
+    background: var(--red);
+
+    color: white;
+
+    font-size: 15px;
+    font-weight: 800;
+
+    cursor: pointer;
+}
+
+button:hover {
+    background: var(--red-hover);
+}
+
+#error {
+    min-height: 20px;
+
+    margin-top: 14px;
+
+    text-align: center;
+
+    color: #ff929a;
+
+    font-size: 13px;
+}
+
+/* =========================================
+   STARTMENÜ
+   ========================================= */
+
+.app {
+    min-height: 100vh;
+}
+
+
+/* Kopfbereich */
+
+.topbar {
+    height: 76px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 32px;
+
+    background: rgba(5, 12, 22, 0.96);
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.logo-small {
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background: var(--red);
+
+    font-size: 18px;
+    font-weight: 900;
+}
+
+.app-title {
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.app-subtitle {
+    margin-top: 2px;
+
+    color: var(--muted);
+
+    font-size: 12px;
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    color: #cbd5e1;
+
+    font-size: 14px;
+}
+
+
+/* Abmelden */
+
+.logout-button {
+    width: auto;
+
+    margin: 0;
+
+    padding: 9px 14px;
+
+    border: 1px solid #29384d;
+
+    border-radius: 8px;
+
+    background: transparent;
+
+    color: #dbe4ef;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.logout-button:hover {
+    background: rgba(255, 255, 255, 0.05);
+
+    border-color: var(--red);
+}
+
+
+/* Hauptbereich */
+
+.main-content {
+    width: min(1100px, calc(100% - 40px));
+
+    margin: 0 auto;
+
+    padding: 55px 0 80px;
+}
+
+.welcome {
+    margin-bottom: 32px;
+}
+
+.welcome h1 {
+    text-align: left;
+
+    margin: 0;
+
+    font-size: 32px;
+}
+
+.welcome p {
+    margin: 8px 0 0;
+
+    color: var(--muted);
+
+    font-size: 15px;
+}
+
+
+/* Menü */
+
+.menu-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 18px;
+}
+
+
+/* Menükarte */
+
+.menu-card {
+    width: 100%;
+
+    min-height: 125px;
+
+    margin: 0;
+
+    padding: 24px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 20px;
+
+    text-align: left;
+
+    border: 1px solid #1d2b3d;
+
+    border-radius: 16px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #0c192a,
+            #07111e
+        );
+
+    color: white;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.15s ease,
+        border-color 0.15s ease,
+        background 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+.menu-card:hover {
+    transform: translateY(-2px);
+
+    border-color: rgba(227, 6, 19, 0.65);
+
+    background:
+        linear-gradient(
+            145deg,
+            #10223a,
+            #091625
+        );
+
+    box-shadow:
+        0 12px 30px
+        rgba(0, 0, 0, 0.3);
+}
+
+
+/* Icon */
+
+.menu-icon {
+    flex-shrink: 0;
+
+    width: 54px;
+    height: 54px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 13px;
+
+    background: rgba(227, 6, 19, 0.12);
+
+    border: 1px solid
+        rgba(227, 6, 19, 0.28);
+
+    color: #ff3a45;
+
+    font-size: 25px;
+    font-weight: 700;
+}
+
+
+/* Text */
+
+.menu-text {
+    flex: 1;
+}
+
+.menu-text h2 {
+    margin: 0;
+
+    text-align: left;
+
+    font-size: 18px;
+}
+
+.menu-text p {
+    margin: 6px 0 0;
+
+    color: var(--muted);
+
+    font-size: 13px;
+
+    line-height: 1.4;
+}
+
+
+/* Pfeil */
+
+.menu-arrow {
+    flex-shrink: 0;
+
+    color: #63748a;
+
+    font-size: 30px;
+
+    transition:
+        transform 0.15s ease,
+        color 0.15s ease;
+}
+
+.menu-card:hover .menu-arrow {
+    color: var(--red);
+
+    transform: translateX(3px);
+}
+
+
+/* Unterbereich */
+
+.section-view {
+    padding: 30px;
+
+    border: 1px solid #1d2b3d;
+
+    border-radius: 16px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #0c192a,
+            #07111e
+        );
+}
+
+.section-view h2 {
+    margin: 25px 0 8px;
+
+    text-align: left;
+
+    font-size: 26px;
+}
+
+.section-view p {
+    margin: 0;
+
+    color: var(--muted);
+
+    font-size: 14px;
+}
+
+
+/* Zurück */
+
+.back-button {
+    width: auto;
+
+    margin: 0;
+
+    padding: 9px 15px;
+
+    border: 1px solid #29384d;
+
+    border-radius: 8px;
+
+    background: transparent;
+
+    color: #dbe4ef;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.back-button:hover {
+    background: rgba(255, 255, 255, 0.05);
+
+    border-color: var(--red);
+}
+
+
+/* Unsichtbar */
+
+.hidden {
+    display: none !important;
+}
+
+
+/* =========================================
+   MOBILE
+   ========================================= */
+
+@media (max-width: 700px) {
+
+    .topbar {
+        height: auto;
+
+        min-height: 70px;
+
+        padding: 12px 18px;
+    }
+
+    .topbar-right {
+        gap: 8px;
+    }
+
+    #usernameDisplay {
+        display: none;
+    }
+
+    .main-content {
+        width: calc(100% - 28px);
+
+        padding: 30px 0 50px;
+    }
+
+    .welcome h1 {
+        font-size: 27px;
+    }
+
+    .menu-grid {
+        grid-template-columns: 1fr;
+
+        gap: 12px;
+    }
+
+    .menu-card {
+        min-height: 105px;
+
+        padding: 18px;
+    }
+
+    .menu-icon {
+        width: 48px;
+        height: 48px;
+    }
+
+}
+
+/* =========================================
+   BEREICHE
+   ========================================= */
+
+.section-content {
+    width: 100%;
+}
+
+.section-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    gap: 20px;
+
+    margin-bottom: 25px;
+}
+
+.section-heading h2 {
+    margin: 20px 0 8px;
+
+    text-align: left;
+
+    font-size: 27px;
+}
+
+.section-heading p {
+    margin: 0;
+
+    color: var(--muted);
+
+    font-size: 14px;
+}
+
+
+/* =========================================
+   BUTTONS
+   ========================================= */
+
+.primary-button {
+    width: auto;
+
+    margin: 0;
+
+    padding: 11px 17px;
+
+    border: 0;
+
+    border-radius: 9px;
+
+    background: var(--red);
+
+    color: white;
+
+    font-size: 13px;
+    font-weight: 800;
+
+    cursor: pointer;
+}
+
+.primary-button:hover {
+    background: var(--red-hover);
+}
+
+.secondary-button {
+    width: auto;
+
+    margin: 0;
+
+    padding: 11px 17px;
+
+    border: 1px solid #29384d;
+
+    border-radius: 9px;
+
+    background: transparent;
+
+    color: #dbe4ef;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.secondary-button:hover {
+    border-color: var(--red);
+}
+
+.small-button {
+    width: auto;
+
+    margin: 0;
+
+    padding: 8px 11px;
+
+    border: 1px solid #29384d;
+
+    border-radius: 7px;
+
+    background: transparent;
+
+    color: #dbe4ef;
+
+    font-size: 12px;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.small-button:hover {
+    border-color: var(--red);
+}
+
+.small-button.danger:hover {
+    border-color: #ff3a45;
+
+    color: #ff6d76;
+}
+
+
+/* =========================================
+   NOTIZEN
+   ========================================= */
+
+.notes-list {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 12px;
+}
+
+.data-card {
+    display: flex;
+
+    align-items: flex-start;
+
+    justify-content: space-between;
+
+    gap: 20px;
+
+    padding: 20px;
+
+    border: 1px solid #1d2b3d;
+
+    border-radius: 13px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #0c192a,
+            #07111e
+        );
+}
+
+.data-card-content {
+    min-width: 0;
+
+    flex: 1;
+}
+
+.data-card-content h3 {
+    margin: 0 0 8px;
+
+    color: white;
+
+    font-size: 17px;
+}
+
+.data-card-content p {
+    margin: 0;
+
+    color: #aebaca;
+
+    font-size: 14px;
+
+    line-height: 1.6;
+
+    overflow-wrap: anywhere;
+}
+
+.data-card-actions {
+    display: flex;
+
+    gap: 7px;
+
+    flex-shrink: 0;
+}
+
+
+/* =========================================
+   KONTAKTE
+   ========================================= */
+
+.contacts-list {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 12px;
+}
+
+.contact-card {
+    display: grid;
+
+    grid-template-columns:
+        minmax(180px, 1fr)
+        auto
+        auto;
+
+    align-items: center;
+
+    gap: 25px;
+
+    padding: 19px;
+
+    border: 1px solid #1d2b3d;
+
+    border-radius: 13px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #0c192a,
+            #07111e
+        );
+}
+
+.contact-main h3 {
+    margin: 0;
+
+    font-size: 16px;
+}
+
+.contact-branch {
+    display: inline-block;
+
+    margin-top: 6px;
+
+    color: var(--muted);
+
+    font-size: 12px;
+}
+
+.contact-number {
+    display: flex;
+
+    gap: 25px;
+}
+
+.contact-number div {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 4px;
+}
+
+.contact-number span {
+    color: var(--muted);
+
+    font-size: 11px;
+
+    text-transform: uppercase;
+}
+
+.contact-number strong {
+    color: white;
+
+    font-size: 14px;
+
+    letter-spacing: 0.5px;
+}
+
+
+/* =========================================
+   LEER
+   ========================================= */
+
+.empty-state {
+    padding: 55px 20px;
+
+    text-align: center;
+
+    border: 1px dashed #29384d;
+
+    border-radius: 13px;
+
+    color: var(--muted);
+}
+
+.empty-icon {
+    width: 50px;
+    height: 50px;
+
+    margin: 0 auto 15px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 12px;
+
+    background: rgba(227, 6, 19, 0.1);
+
+    color: var(--red);
+
+    font-size: 24px;
+}
+
+.empty-state h3 {
+    margin: 0 0 7px;
+
+    color: white;
+
+    font-size: 16px;
+}
+
+.empty-state p {
+    margin: 0;
+
+    font-size: 13px;
+}
+
+.loading {
+    padding: 30px;
+
+    text-align: center;
+
+    color: var(--muted);
+}
+
+
+/* =========================================
+   MODAL
+   ========================================= */
+
+.modal {
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 1000;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 20px;
+
+    background:
+        rgba(0, 0, 0, 0.72);
+
+    backdrop-filter: blur(5px);
+}
+
+.modal-card {
+    width: 100%;
+
+    max-width: 560px;
+
+    max-height: 90vh;
+
+    overflow-y: auto;
+
+    padding: 25px;
+
+    border: 1px solid #26384f;
+
+    border-radius: 16px;
+
+    background: #091423;
+
+    box-shadow:
+        0 30px 100px
+        rgba(0, 0, 0, 0.65);
+}
+
+.modal-header {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    margin-bottom: 10px;
+}
+
+.modal-header h2 {
+    margin: 0;
+
+    text-align: left;
+
+    font-size: 21px;
+}
+
+.modal-close {
+    width: 35px;
+    height: 35px;
+
+    margin: 0;
+
+    padding: 0;
+
+    border-radius: 8px;
+
+    background: transparent;
+
+    color: #9aa8ba;
+
+    font-size: 24px;
+
+    line-height: 1;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.05);
+
+    color: white;
+}
+
+.modal-card textarea {
+    width: 100%;
+
+    padding: 13px 14px;
+
+    resize: vertical;
+
+    border: 1px solid var(--border);
+
+    border-radius: 10px;
+
+    background: #0b1727;
+
+    color: white;
+
+    font-family: inherit;
+
+    font-size: 14px;
+
+    outline: none;
+}
+
+.modal-card textarea:focus {
+    border-color: var(--red);
+
+    box-shadow:
+        0 0 0 3px
+        rgba(227, 6, 19, 0.12);
+}
+
+.modal-actions {
+    display: flex;
+
+    justify-content: flex-end;
+
+    gap: 10px;
+
+    margin-top: 25px;
+}
+
+.form-row {
+    display: grid;
+
+    grid-template-columns:
+        1fr 1fr;
+
+    gap: 15px;
+}
+
+
+/* =========================================
+   EINSTELLUNGEN
+   ========================================= */
+
+.settings-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 16px;
+}
+
+.settings-card {
+    padding: 22px;
+
+    border: 1px solid #1d2b3d;
+
+    border-radius: 13px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #0c192a,
+            #07111e
+        );
+}
+
+.settings-card h3 {
+    margin: 0 0 18px;
+
+    font-size: 17px;
+}
+
+.settings-card input,
+.settings-card select {
+    width: 100%;
+
+    margin-bottom: 16px;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 9px;
+
+    background: #0b1727;
+
+    color: white;
+
+    font-size: 14px;
+}
+
+.settings-card select {
+    cursor: pointer;
+}
+
+.checkbox-label {
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    margin-bottom: 20px;
+
+    color: #cbd5e1;
+
+    font-size: 13px;
+
+    cursor: pointer;
+}
+
+.checkbox-label input {
+    width: auto;
+
+    margin: 0;
+
+    accent-color: var(--red);
+}
+
+
+/* =========================================
+   FEHLER
+   ========================================= */
+
+.error-box {
+    padding: 20px;
+
+    border: 1px solid rgba(227, 6, 19, 0.35);
+
+    border-radius: 10px;
+
+    background: rgba(227, 6, 19, 0.08);
+
+    color: #ff929a;
+}
+
+
+/* =========================================
+   KOMPAKTE DARSTELLUNG
+   ========================================= */
+
+.compact-mode .data-card {
+    padding: 13px 16px;
+}
+
+.compact-mode .contact-card {
+    padding: 13px 16px;
+}
+
+.compact-mode .menu-card {
+    min-height: 100px;
+
+    padding: 17px;
+}
+
+
+/* =========================================
+   SCHWARZES THEMA
+   ========================================= */
+
+body[data-theme="black"] {
+    --background: #000000;
+    --background-light: #050505;
+    --card: #070707;
+}
+
+body[data-theme="black"] .topbar {
+    background: rgba(0, 0, 0, 0.97);
+}
+
+
+/* =========================================
+   MOBILE
+   ========================================= */
+
+@media (max-width: 800px) {
+
+    .section-heading {
+        flex-direction: column;
+    }
+
+    .contact-card {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .contact-number {
+        flex-wrap: wrap;
+    }
+
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    .data-card {
+        flex-direction: column;
+    }
+
+    .data-card-actions {
+        width: 100%;
+    }
+
+    .data-card-actions button {
+        flex: 1;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .modal-card {
+        padding: 20px;
+    }
+
+}
+
+/* =========================================
+   SUCHLEISTE
+   ========================================= */
+
+.search-box {
+    position: relative;
+
+    width: 100%;
+
+    margin-bottom: 18px;
+}
+
+.search-box input {
+    width: 100%;
+
+    margin: 0;
+
+    padding: 14px 16px 14px 45px;
+
+    border: 1px solid #223247;
+
+    border-radius: 11px;
+
+    background: #0b1727;
+
+    color: white;
+
+    font-size: 14px;
+
+    outline: none;
+}
+
+.search-box input:focus {
+    border-color: var(--red);
+
+    box-shadow:
+        0 0 0 3px
+        rgba(227, 6, 19, 0.12);
+}
+
+.search-icon {
+    position: absolute;
+
+    left: 16px;
+    top: 50%;
+
+    transform: translateY(-50%);
+
+    color: #718198;
+
+    pointer-events: none;
+}
+
+
+/* =========================================
+   NOTIZEN - NUR ÜBERSCHRIFT
+   ========================================= */
+
+.note-title-card {
+    display: flex;
+
+    align-items: center;
+
+    gap: 14px;
+
+    min-height: 64px;
+
+    padding: 14px 18px;
+
+    border: 1px solid #1d2b3d;
+
+    border-radius: 11px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #0c192a,
+            #07111e
+        );
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.15s ease,
+        background 0.15s ease,
+        transform 0.15s ease;
+}
+
+.note-title-card:hover {
+    transform: translateX(2px);
+
+    border-color:
+        rgba(227, 6, 19, 0.6);
+
+    background:
+        linear-gradient(
+            145deg,
+            #10223a,
+            #091625
+        );
+}
+
+.note-title-icon {
+    width: 35px;
+    height: 35px;
+
+    flex-shrink: 0;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 8px;
+
+    background:
+        rgba(227, 6, 19, 0.11);
+
+    color: var(--red);
+
+    font-size: 20px;
+}
+
+.note-title-text {
+    flex: 1;
+
+    min-width: 0;
+}
+
+.note-title-text h3 {
+    margin: 0;
+
+    color: white;
+
+    font-size: 15px;
+
+    font-weight: 700;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+}
+
+.note-title-arrow {
+    color: #61738a;
+
+    font-size: 25px;
+}
+
+.note-title-card:hover .note-title-arrow {
+    color: var(--red);
+}
+
+
+/* =========================================
+   DETAILANSICHT
+   ========================================= */
+
+.detail-topbar {
+    margin-bottom: 18px;
+}
+
+.note-detail {
+    padding: 25px;
+
+    border: 1px solid #1d2b3d;
+
+    border-radius: 14px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #0c192a,
+            #07111e
+        );
+}
+
+.note-detail-header {
+    display: flex;
+
+    align-items: flex-start;
+
+    justify-content: space-between;
+
+    gap: 20px;
+
+    padding-bottom: 20px;
+
+    border-bottom: 1px solid #1d2b3d;
+}
+
+.detail-category {
+    margin-bottom: 7px;
+
+    color: var(--red);
+
+    font-size: 11px;
+
+    font-weight: 800;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.7px;
+}
+
+.note-detail-header h2 {
+    margin: 0;
+
+    text-align: left;
+
+    color: white;
+
+    font-size: 24px;
+}
+
+.note-detail-content {
+    padding-top: 22px;
+
+    color: #c5cfdb;
+
+    font-size: 15px;
+
+    line-height: 1.7;
+
+    overflow-wrap: anywhere;
+}
+
+.muted-text {
+    color: var(--muted);
+}
+
+
+/* =========================================
+   MOBILE DETAIL
+   ========================================= */
+
+@media (max-width: 600px) {
+
+    .note-detail-header {
+        flex-direction: column;
+    }
+
+    .note-detail-header
+    .data-card-actions {
+        width: 100%;
+    }
+
+    .note-detail-header
+    .data-card-actions button {
+        flex: 1;
+    }
+
+}
+
+/* =========================================================
+   F8 – NOTIZBUCH / XXXLUTZ DESIGN
+========================================================= */
+
+:root {
+    --f8-red: #e30613;
+    --f8-red-dark: #b9000b;
+    --f8-white: #ffffff;
+    --f8-light: #f5f5f5;
+    --f8-dark: #111111;
+    --f8-gray: #666666;
+    --f8-border: #dddddd;
+}
+
+/* =========================
+   LOGIN
+========================= */
+
+body.login-page {
+    margin: 0;
+    min-height: 100vh;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ffffff 0%,
+            #ffffff 58%,
+            #f7f7f7 58%,
+            #f7f7f7 100%
+        );
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    color: var(--f8-dark);
+}
+
+.login-page .login-container {
+    min-height: 100vh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 30px;
+}
+
+.login-page .login-card {
+    width: 100%;
+    max-width: 420px;
+
+    background: #ffffff;
+
+    border-radius: 14px;
+
+    padding: 42px;
+
+    box-sizing: border-box;
+
+    box-shadow:
+        0 15px 45px rgba(0, 0, 0, 0.14);
+
+    border-top: 7px solid var(--f8-red);
+}
+
+.login-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    margin-bottom: 25px;
+}
+
+.login-logo img {
+    width: 210px;
+    max-width: 80%;
+    height: auto;
+}
+
+.login-title {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-title h1 {
+    margin: 0;
+
+    font-size: 29px;
+    font-weight: 800;
+
+    color: #111111;
+}
+
+.login-title p {
+    margin: 7px 0 0;
+
+    color: #777777;
+    font-size: 14px;
+}
+
+/* Form */
+
+.login-page form {
+    display: flex;
+    flex-direction: column;
+}
+
+.login-page label {
+    margin-top: 15px;
+    margin-bottom: 7px;
+
+    font-size: 14px;
+    font-weight: 700;
+
+    color: #333333;
+}
+
+.login-page input {
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: 13px 14px;
+
+    border: 1px solid #cccccc;
+    border-radius: 7px;
+
+    font-size: 15px;
+
+    outline: none;
+
+    transition:
+        border-color 0.2s,
+        box-shadow 0.2s;
+}
+
+.login-page input:focus {
+    border-color: var(--f8-red);
+
+    box-shadow:
+        0 0 0 3px rgba(227, 6, 19, 0.12);
+}
+
+.login-page button {
+    margin-top: 25px;
+
+    width: 100%;
+
+    border: 0;
+    border-radius: 7px;
+
+    padding: 14px;
+
+    background: var(--f8-red);
+    color: white;
+
+    font-size: 16px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s,
+        transform 0.1s;
+}
+
+.login-page button:hover {
+    background: var(--f8-red-dark);
+}
+
+.login-page button:active {
+    transform: translateY(1px);
+}
+
+.login-page #error {
+    min-height: 20px;
+
+    margin-top: 15px;
+
+    color: var(--f8-red);
+
+    text-align: center;
+
+    font-size: 14px;
+}
+
+
+/* =========================================================
+   STARTBEREICH
+========================================================= */
+
+.start-page,
+.app-page {
+    background: #ffffff;
+}
+
+/* Roter Kopfbereich */
+
+.app-header {
+    background: var(--f8-red) !important;
+    color: #ffffff !important;
+
+    border-bottom: 5px solid #b9000b;
+}
+
+/* Logo im Hauptbereich */
+
+.app-logo img {
+    max-height: 48px;
+    width: auto;
+}
+
+/* F8 Titel */
+
+.app-title,
+.app-header h1 {
+    color: #ffffff !important;
+}
+
+/* Startbereich */
+
+.menu-container,
+.menu-grid {
+    background: #ffffff;
+}
+
+/* Karten */
+
+.menu-card {
+    background: #ffffff !important;
+
+    border: 2px solid var(--f8-red) !important;
+
+    color: #111111 !important;
+
+    border-radius: 12px;
+
+    transition:
+        transform 0.18s ease,
+        box-shadow 0.18s ease,
+        background 0.18s ease;
+}
+
+.menu-card:hover {
+    background: var(--f8-red) !important;
+    color: #ffffff !important;
+
+    transform: translateY(-3px);
+
+    box-shadow:
+        0 10px 25px rgba(227, 6, 19, 0.22);
+}
+
+.menu-card:hover h3,
+.menu-card:hover p,
+.menu-card:hover .menu-card-title {
+    color: #ffffff !important;
+}
+
+/* Icons */
+
+.menu-card-icon {
+    color: var(--f8-red) !important;
+}
+
+.menu-card:hover .menu-card-icon {
+    color: #ffffff !important;
+}
+
+
+/* =========================================================
+   SEITEN / NOTIZEN
+========================================================= */
+
+.section-header {
+    border-bottom-color: var(--f8-red) !important;
+}
+
+.section-header h2 {
+    color: #111111;
+}
+
+.back-button {
+    color: var(--f8-red) !important;
+}
+
+.add-button,
+.primary-button {
+    background: var(--f8-red) !important;
+    color: #ffffff !important;
+}
+
+.add-button:hover,
+.primary-button:hover {
+    background: var(--f8-red-dark) !important;
+}
+
+
+/* =========================================================
+   SUCHFELDER
+========================================================= */
+
+.search-box input:focus {
+    border-color: var(--f8-red) !important;
+
+    box-shadow:
+        0 0 0 3px rgba(227, 6, 19, 0.10) !important;
+}
+
+
+/* =========================================================
+   NOTIZ-KARTEN
+========================================================= */
+
+.note-title-card {
+    border-left: 4px solid var(--f8-red) !important;
+}
+
+.note-title-icon {
+    color: var(--f8-red) !important;
+}
+
+.note-title-card:hover {
+    border-color: var(--f8-red) !important;
+
+    box-shadow:
+        0 5px 18px rgba(0, 0, 0, 0.10);
+}
+
+
+/* =========================================================
+   MODAL BUTTONS
+========================================================= */
+
+.modal button[type="submit"] {
+    background: var(--f8-red);
+    color: #ffffff;
+}
+
+.modal button[type="submit"]:hover {
+    background: var(--f8-red-dark);
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+
+    .login-page .login-card {
+        padding: 30px 22px;
+    }
+
+    .login-title h1 {
+        font-size: 25px;
+    }
+
+    .login-logo img {
+        width: 175px;
+    }
+
+}
+
+/* =========================================================
+   F8 – DESIGN ANPASSUNG
+   STARTMENÜ = WEISS / ROT / SCHWARZ
+   NORMALE MENÜS = DUNKLES URSPRÜNGLICHES DESIGN
+========================================================= */
+
+.start-page,
+.menu-container {
+    background: #ffffff !important;
+}
+
+.menu-card {
+    background: #ffffff !important;
+    border: 2px solid #111111 !important;
+    color: #111111 !important;
+    border-radius: 10px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+    transition: transform 0.18s ease, background 0.18s ease,
+                color 0.18s ease, border-color 0.18s ease,
+                box-shadow 0.18s ease;
+}
+
+.menu-card:hover {
+    background: #e30613 !important;
+    border-color: #111111 !important;
+    color: #ffffff !important;
+    transform: translateY(-3px);
+    box-shadow: 0 7px 18px rgba(0, 0, 0, 0.18);
+}
+
+.menu-card:hover h3,
+.menu-card:hover h4,
+.menu-card:hover p,
+.menu-card:hover span,
+.menu-card:hover .menu-card-title {
+    color: #ffffff !important;
+}
+
+.menu-card-icon {
+    border: 2px solid #111111;
+    color: #e30613 !important;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.menu-card:hover .menu-card-icon {
+    background: #ffffff;
+    border-color: #111111;
+    color: #e30613 !important;
+}
+
+.app-header {
+    background: #e30613 !important;
+    border-bottom: 3px solid #111111 !important;
+    color: #ffffff !important;
+}
+
+.app-header h1,
+.app-header h2,
+.app-title {
+    color: #ffffff !important;
+}
+
+#sectionView {
+    background: #0d1724 !important;
+}
+
+#sectionContent {
+    color: #ffffff;
+}
+
+.section-header {
+    background: transparent !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.section-header h2 {
+    color: #ffffff !important;
+}
+
+.back-button {
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.back-button:hover {
+    background: #e30613 !important;
+    border-color: #111111 !important;
+}
+
+.search-box input {
+    background: #111c2b !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.search-box input::placeholder {
+    color: #9aa5b1;
+}
+
+.search-box input:focus {
+    border-color: #e30613 !important;
+    box-shadow: 0 0 0 2px rgba(227, 6, 19, 0.2) !important;
+}
+
+.note-title-card {
+    background: #111c2b !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-left: 4px solid #e30613 !important;
+}
+
+.note-title-card:hover {
+    background: #182638 !important;
+    border-color: #e30613 !important;
+}
+
+.note-title-text h3 {
+    color: #ffffff !important;
+}
+
+.note-title-arrow {
+    color: #e30613 !important;
+}
+
+.note-detail {
+    background: #111c2b !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.note-detail-header h2 {
+    color: #ffffff !important;
+}
+
+.detail-category {
+    color: #e30613 !important;
+}
+
+.note-detail-content {
+    color: #e1e5e9 !important;
+}
+
+.add-button,
+.primary-button {
+    background: #e30613 !important;
+    color: #ffffff !important;
+    border: 1px solid #111111 !important;
+}
+
+.add-button:hover,
+.primary-button:hover {
+    background: #b9000b !important;
+}
+
+.modal {
+    background: #111c2b !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.modal input,
+.modal textarea,
+.modal select {
+    background: #0d1724 !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+.modal input:focus,
+.modal textarea:focus,
+.modal select:focus {
+    border-color: #e30613 !important;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(227, 6, 19, 0.15);
+}
+
+.contact-card {
+    background: #111c2b !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-left: 4px solid #e30613 !important;
+}
+
+.contact-card:hover {
+    border-color: #e30613 !important;
+}
+
+.settings-card {
+    background: #111c2b !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+.menu-card,
+.add-button,
+.primary-button,
+.back-button {
+    box-sizing: border-box;
+}
+
+
+/* =========================================================
+   F8 – STARTMENÜ FINAL
+========================================================= */
+
+/* Gesamter Startbereich */
+body {
+    background: #ffffff;
+}
+
+/* Oberer Bereich */
+.topbar {
+    background: #e30613 !important;
+    color: #ffffff !important;
+    border-bottom: 3px solid #111111 !important;
+}
+
+/* Texte in der roten Kopfzeile */
+.topbar h1,
+.topbar h2,
+.topbar h3,
+.topbar p,
+.topbar span {
+    color: #ffffff !important;
+}
+
+/* Startmenü */
+.menu-grid {
+    background: #ffffff !important;
+}
+
+/* Alle sechs Startkarten */
+.menu-grid .menu-card {
+    background: #ffffff !important;
+    color: #111111 !important;
+
+    border: 2px solid #111111 !important;
+    border-radius: 10px !important;
+
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.10) !important;
+
+    transition:
+        background 0.18s ease,
+        color 0.18s ease,
+        transform 0.18s ease,
+        box-shadow 0.18s ease !important;
+}
+
+/* Texte der Karten */
+.menu-grid .menu-card .menu-text,
+.menu-grid .menu-card .menu-text h3,
+.menu-grid .menu-card .menu-text p,
+.menu-grid .menu-card .menu-icon,
+.menu-grid .menu-card .menu-arrow {
+    color: #111111 !important;
+}
+
+/* Roter Hover */
+.menu-grid .menu-card:hover {
+    background: #e30613 !important;
+    color: #ffffff !important;
+
+    border-color: #111111 !important;
+
+    transform: translateY(-3px);
+
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.20) !important;
+}
+
+/* Text beim Hover weiß */
+.menu-grid .menu-card:hover .menu-text,
+.menu-grid .menu-card:hover .menu-text h3,
+.menu-grid .menu-card:hover .menu-text p,
+.menu-grid .menu-card:hover .menu-icon,
+.menu-grid .menu-card:hover .menu-arrow {
+    color: #ffffff !important;
+}
+
+/* Schwarze Umrandung der Icons */
+.menu-grid .menu-icon {
+    border: 2px solid #111111 !important;
+    border-radius: 8px !important;
+}
+
+/* =========================================================
+   NORMALE BEREICHE WIEDER DUNKEL
+========================================================= */
+
+#sectionView {
+    background: #0d1724 !important;
+    color: #ffffff !important;
+}
+
+#sectionView .section-content {
+    color: #ffffff !important;
+}
+
+#sectionView .section-header {
+    background: transparent !important;
+}
+
+#sectionView .section-header h2 {
+    color: #ffffff !important;
+}
+
+/* Notizkarten */
+#sectionView .note-title-card {
+    background: #111c2b !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
+    border-left: 4px solid #e30613 !important;
+}
+
+#sectionView .note-title-text h3 {
+    color: #ffffff !important;
+}
+
+/* Suchfelder */
+#sectionView .search-box input {
+    background: #111c2b !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.25) !important;
+}
+
+#sectionView .search-box input::placeholder {
+    color: #9aa5b1 !important;
+}
+
+/* Zurück */
+#sectionView .back-button {
+    background: #111c2b !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.25) !important;
+}
+
+#sectionView .back-button:hover {
+    background: #e30613 !important;
+    color: #ffffff !important;
+    border-color: #111111 !important;
+}
+
+
+/* =========================================================
+   KORREKTUR: LOGIN SCHWARZ / STARTMENÜ WIE VORHER
+========================================================= */
+
+/* ---------------------------------------------------------
+   ANMELDESEITE
+   Schwarze Umrandungen
+--------------------------------------------------------- */
+
+body.login-page .login-card {
+    border: 2px solid #111111 !important;
+    border-top: 7px solid #e30613 !important;
+}
+
+body.login-page input {
+    border: 2px solid #111111 !important;
+}
+
+body.login-page input:focus {
+    border-color: #111111 !important;
+    box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.12) !important;
+}
+
+body.login-page button {
+    border: 2px solid #111111 !important;
+}
+
+
+/* ---------------------------------------------------------
+   HAUPTMENÜ
+   Zurück zum vorherigen weiß/roten Design
+--------------------------------------------------------- */
+
+.menu-grid .menu-card {
+    background: #ffffff !important;
+    color: #111111 !important;
+
+    border: 2px solid #e30613 !important;
+    border-radius: 10px !important;
+
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08) !important;
+
+    transform: none !important;
+}
+
+/* Karteninhalt */
+
+.menu-grid .menu-card .menu-text,
+.menu-grid .menu-card .menu-text h3,
+.menu-grid .menu-card .menu-text p,
+.menu-grid .menu-card .menu-icon,
+.menu-grid .menu-card .menu-arrow {
+    color: #111111 !important;
+}
+
+/* Icons ohne schwarzen Rahmen */
+
+.menu-grid .menu-icon {
+    border: none !important;
+    color: #e30613 !important;
+    background: transparent !important;
+}
+
+/* Hover wie beim ursprünglichen roten Design */
+
+.menu-grid .menu-card:hover {
+    background: #e30613 !important;
+    color: #ffffff !important;
+
+    border: 2px solid #e30613 !important;
+
+    transform: translateY(-3px) !important;
+
+    box-shadow: 0 7px 18px rgba(227, 6, 19, 0.22) !important;
+}
+
+.menu-grid .menu-card:hover .menu-text,
+.menu-grid .menu-card:hover .menu-text h3,
+.menu-grid .menu-card:hover .menu-text p,
+.menu-grid .menu-card:hover .menu-icon,
+.menu-grid .menu-card:hover .menu-arrow {
+    color: #ffffff !important;
+}
+
+.menu-grid .menu-card:hover .menu-icon {
+    background: transparent !important;
+    border: none !important;
+}
+
+
+/* ---------------------------------------------------------
+   STARTSEITE WEISS
+--------------------------------------------------------- */
+
+.menu-grid {
+    background: #ffffff !important;
+}
+
+
+/* ---------------------------------------------------------
+   ROTE KOPFLEISTE BEIBEHALTEN
+--------------------------------------------------------- */
+
+.topbar {
+    background: #e30613 !important;
+    color: #ffffff !important;
+    border-bottom: 3px solid #111111 !important;
+}
+
+.topbar h1,
+.topbar h2,
+.topbar h3,
+.topbar p,
+.topbar span {
+    color: #ffffff !important;
+}
+
+
+/* =========================================================
+   HAUPTMENÜ KOMPLETT AUF ALTES DESIGN ZURÜCK
+   ========================================================= */
+
+.menu-grid {
+    background: transparent !important;
+}
+
+/* Alte Kacheln */
+.menu-grid .menu-card {
+    background: #ffffff !important;
+    color: #111111 !important;
+
+    border: 2px solid #e30613 !important;
+    border-radius: 10px !important;
+
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08) !important;
+
+    transform: none !important;
+}
+
+/* Texte */
+.menu-grid .menu-card .menu-text,
+.menu-grid .menu-card .menu-text h3,
+.menu-grid .menu-card .menu-text p,
+.menu-grid .menu-card .menu-arrow {
+    color: #111111 !important;
+}
+
+/* Icons */
+.menu-grid .menu-card .menu-icon {
+    color: #e30613 !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+/* Hover */
+.menu-grid .menu-card:hover {
+    background: #e30613 !important;
+    color: #ffffff !important;
+
+    border: 2px solid #e30613 !important;
+
+    transform: translateY(-3px) !important;
+
+    box-shadow: 0 7px 18px rgba(227, 6, 19, 0.22) !important;
+}
+
+.menu-grid .menu-card:hover .menu-text,
+.menu-grid .menu-card:hover .menu-text h3,
+.menu-grid .menu-card:hover .menu-text p,
+.menu-grid .menu-card:hover .menu-arrow,
+.menu-grid .menu-card:hover .menu-icon {
+    color: #ffffff !important;
+}
+
+.menu-grid .menu-card:hover .menu-icon {
+    background: transparent !important;
+    border: none !important;
+}
+
+
+/* =========================================================
+   HAUPTMENÜ – ALTES DESIGN WIEDERHERSTELLEN
+   ========================================================= */
+
+/* Nur die Startseite */
+body:has(#menuGrid:not(.hidden)) {
+    background:
+        radial-gradient(
+            circle at 50% 10%,
+            #112a4c 0%,
+            #081525 35%,
+            #03070d 75%
+        ) !important;
+}
+
+/* Hauptbereich */
+#menuGrid {
+    background: transparent !important;
+}
+
+/* Die sechs ursprünglichen dunklen Kacheln */
+#menuGrid .menu-card {
+    width: 100% !important;
+    min-height: 125px !important;
+    margin: 0 !important;
+    padding: 24px !important;
+
+    display: flex !important;
+    align-items: center !important;
+    gap: 20px !important;
+
+    text-align: left !important;
+
+    border: 1px solid #1d2b3d !important;
+    border-radius: 16px !important;
+
+    background:
+        linear-gradient(
+            145deg,
+            #0c192a,
+            #07111e
+        ) !important;
+
+    color: #ffffff !important;
+
+    box-shadow: none !important;
+
+    transform: none !important;
+
+    transition:
+        transform 0.15s ease,
+        border-color 0.15s ease,
+        background 0.15s ease,
+        box-shadow 0.15s ease !important;
+}
+
+/* Texte */
+#menuGrid .menu-card .menu-text,
+#menuGrid .menu-card .menu-text h2,
+#menuGrid .menu-card .menu-text h3,
+#menuGrid .menu-card .menu-text p,
+#menuGrid .menu-card .menu-arrow {
+    color: #ffffff !important;
+}
+
+/* Beschreibung */
+#menuGrid .menu-card .menu-text p {
+    color: #8e9bad !important;
+}
+
+/* Icon */
+#menuGrid .menu-card .menu-icon {
+    width: 54px !important;
+    height: 54px !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    flex-shrink: 0 !important;
+
+    border-radius: 13px !important;
+
+    background: rgba(227, 6, 19, 0.12) !important;
+
+    border: 1px solid rgba(227, 6, 19, 0.28) !important;
+
+    color: #ff3a45 !important;
+
+    font-size: 25px !important;
+}
+
+/* Pfeil */
+#menuGrid .menu-card .menu-arrow {
+    color: #63748a !important;
+    font-size: 30px !important;
+}
+
+/* Hover – ursprüngliches dunkles Design */
+#menuGrid .menu-card:hover {
+    background:
+        linear-gradient(
+            145deg,
+            #10223a,
+            #091625
+        ) !important;
+
+    border-color: rgba(227, 6, 19, 0.65) !important;
+
+    color: #ffffff !important;
+
+    transform: translateY(-2px) !important;
+
+    box-shadow:
+        0 12px 30px
+        rgba(0, 0, 0, 0.3) !important;
+}
+
+#menuGrid .menu-card:hover .menu-text,
+#menuGrid .menu-card:hover .menu-text h2,
+#menuGrid .menu-card:hover .menu-text h3,
+#menuGrid .menu-card:hover .menu-text p {
+    color: #ffffff !important;
+}
+
+#menuGrid .menu-card:hover .menu-icon {
+    background: rgba(227, 6, 19, 0.12) !important;
+    border-color: rgba(227, 6, 19, 0.28) !important;
+    color: #ff3a45 !important;
+}
+
+#menuGrid .menu-card:hover .menu-arrow {
+    color: #e30613 !important;
+    transform: translateX(3px) !important;
+}
+
+/* =========================================================
+   KOPFLEISTE DES HAUPTMENÜS – ALTES DUNKLES DESIGN
+   ========================================================= */
+
+.topbar {
+    background: rgba(5, 12, 22, 0.96) !important;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.25) !important;
+}
+
+.topbar h1,
+.topbar h2,
+.topbar h3,
+.topbar p,
+.topbar span {
+    color: #ffffff !important;
+}
+
+/* Roter F8-Bereich links */
+.topbar .logo-small {
+    background: #e30613 !important;
+    color: #ffffff !important;
+}
+
+/* =========================================================
+   HAUPTMENÜ – SCHWARZE UMRANDUNG NICHT VERWENDEN
+   ========================================================= */
+
+#menuGrid .menu-card {
+    outline: none !important;
+}
+
+#menuGrid .menu-icon {
+    outline: none !important;
+}
+
+
+/* =========================================================
+   NORMALE BEREICHE – ALTES DUNKLES DESIGN
+   ========================================================= */
+
+#sectionView {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+#sectionView .section-content,
+#sectionView .section-content > * {
+    color: #ffffff;
+}
+
+/* Der eigentliche Inhaltsbereich */
+#sectionView .section-view {
+    padding: 30px !important;
+
+    border: 1px solid #1d2b3d !important;
+    border-radius: 16px !important;
+
+    background:
+        linear-gradient(
+            145deg,
+            #0c192a,
+            #07111e
+        ) !important;
+
+    color: #ffffff !important;
+}
+
+/* Überschriften */
+#sectionView h1,
+#sectionView h2,
+#sectionView h3,
+#sectionView h4 {
+    color: #ffffff !important;
+}
+
+/* Beschreibungstexte */
+#sectionView p {
+    color: #8e9bad !important;
+}
+
+/* Eingabefelder im normalen Menü */
+#sectionView input,
+#sectionView textarea,
+#sectionView select {
+    background: #07111e !important;
+    color: #ffffff !important;
+    border: 1px solid #29384d !important;
+}
+
+/* Listen / Karten */
+#sectionView .note-card,
+#sectionView .contact-card,
+#sectionView .list-item,
+#sectionView .card {
+    background:
+        linear-gradient(
+            145deg,
+            #0c192a,
+            #07111e
+        ) !important;
+
+    color: #ffffff !important;
+    border-color: #1d2b3d !important;
+}
+
+/* Buttons */
+#sectionView button {
+    border-color: #29384d !important;
+}
+
+/* Hintergrund der kompletten App */
+body {
+    background:
+        radial-gradient(
+            circle at 50% 10%,
+            #112a4c 0%,
+            #081525 35%,
+            #03070d 75%
+        ) !important;
+}
+
+/* Beim geöffneten Bereich keine weiße Fläche */
+#sectionView,
+#sectionView * {
+    scrollbar-color: #29384d #07111e;
+}
+
+
+
+/* ============================================================
+   NEUE EINSTELLUNGSSEITE
+   ============================================================ */
+
+.settings-page {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 22px;
+}
+
+
+.settings-card {
+    position: relative;
+    min-width: 0;
+    padding: 22px;
+    border: 1px solid #243449;
+    border-radius: 15px;
+    background:
+        linear-gradient(
+            145deg,
+            #0d1a2b,
+            #08121f
+        );
+    color: #ffffff;
+    box-shadow:
+        0 8px 22px rgba(0, 0, 0, 0.16);
+}
+
+
+.settings-card-wide {
+    grid-column: 1 / -1;
+}
+
+
+.settings-card-header {
+    margin-bottom: 22px;
+}
+
+
+.settings-card-header > div {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+}
+
+
+.settings-card-header h3 {
+    margin: 0 0 5px;
+    font-size: 18px;
+    color: #ffffff;
+}
+
+
+.settings-card-header p {
+    margin: 0;
+    color: #91a1b5;
+    font-size: 13px;
+}
+
+
+.settings-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 38px;
+    height: 38px;
+
+    flex: 0 0 38px;
+
+    border-radius: 10px;
+
+    background: #15263b;
+
+    font-size: 18px;
+}
+
+
+.settings-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+}
+
+
+.settings-field {
+    margin-bottom: 17px;
+}
+
+
+.settings-field:last-child {
+    margin-bottom: 0;
+}
+
+
+.settings-field label {
+    display: block;
+    margin-bottom: 8px;
+
+    color: #dce5ef;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+
+.settings-field input,
+.settings-field select {
+    width: 100%;
+    box-sizing: border-box;
+
+    min-height: 44px;
+
+    padding: 11px 13px;
+
+    border: 1px solid #2a3c52;
+    border-radius: 9px;
+
+    outline: none;
+
+    background: #0a1524;
+    color: #ffffff;
+
+    font-family: inherit;
+    font-size: 14px;
+
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        background 0.15s ease;
+}
+
+
+.settings-field input:focus,
+.settings-field select:focus {
+    border-color: #547da8;
+
+    box-shadow:
+        0 0 0 3px rgba(84, 125, 168, 0.16);
+
+    background: #0c1929;
+}
+
+
+.settings-field input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+
+.settings-field small {
+    display: block;
+    margin-top: 7px;
+
+    color: #77899e;
+
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+
+/* Schalter */
+
+.settings-switch {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+
+    min-height: 40px;
+
+    margin-top: 5px;
+
+    color: #dce5ef;
+
+    font-size: 13px;
+
+    cursor: pointer;
+}
+
+
+.settings-switch input {
+    width: 18px;
+    height: 18px;
+
+    margin: 0;
+
+    accent-color: #547da8;
+
+    cursor: pointer;
+}
+
+
+/* Trennlinie */
+
+.settings-divider {
+    height: 1px;
+
+    margin: 20px 0;
+
+    background: #213146;
+}
+
+
+/* Buttons */
+
+.settings-action-button {
+    width: 100%;
+    margin-top: 8px;
+}
+
+
+.secondary-button {
+    min-height: 42px;
+
+    padding: 10px 16px;
+
+    border: 1px solid #30455e;
+    border-radius: 9px;
+
+    background: #132238;
+    color: #ffffff;
+
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        transform 0.1s ease;
+}
+
+
+.secondary-button:hover {
+    background: #192d46;
+    border-color: #466582;
+}
+
+
+.secondary-button:active {
+    transform: translateY(1px);
+}
+
+
+.danger-button {
+    width: 100%;
+    min-height: 42px;
+
+    margin-top: 12px;
+    padding: 10px 16px;
+
+    border: 1px solid #6d3434;
+    border-radius: 9px;
+
+    background: #281719;
+    color: #ffffff;
+
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease;
+}
+
+
+.danger-button:hover {
+    background: #351b1d;
+    border-color: #934646;
+}
+
+
+.settings-save-area {
+    grid-column: 1 / -1;
+
+    display: flex;
+    justify-content: flex-end;
+
+    padding-top: 2px;
+}
+
+
+.settings-save-button {
+    min-width: 230px;
+}
+
+
+/* Systemstatus */
+
+.system-status-box {
+    overflow: hidden;
+
+    border: 1px solid #213146;
+    border-radius: 10px;
+
+    background: #091422;
+}
+
+
+.system-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    min-height: 42px;
+
+    padding: 0 13px;
+
+    border-bottom: 1px solid #1b2a3d;
+
+    color: #aab8c8;
+
+    font-size: 13px;
+}
+
+
+.system-status-row:last-child {
+    border-bottom: 0;
+}
+
+
+.system-status-row strong {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+
+.status-online {
+    color: #7fc89b !important;
+}
+
+
+.status-offline {
+    color: #d77b7b !important;
+}
+
+
+/* ============================================================
+   SCHRIFTGRÖSSEN
+   ============================================================ */
+
+body.font-size-small {
+    font-size: 13px;
+}
+
+
+body.font-size-medium {
+    font-size: 14px;
+}
+
+
+body.font-size-large {
+    font-size: 16px;
+}
+
+
+body.font-size-large .section-heading h2 {
+    font-size: 26px;
+}
+
+
+body.font-size-large .settings-card-header h3 {
+    font-size: 19px;
+}
+
+
+/* ============================================================
+   SCHWARZES THEME
+   ============================================================ */
+
+body[data-theme="black"] .settings-card {
+    background:
+        linear-gradient(
+            145deg,
+            #111111,
+            #080808
+        );
+
+    border-color: #2a2a2a;
+}
+
+
+body[data-theme="black"] .settings-card-icon {
+    background: #1b1b1b;
+}
+
+
+body[data-theme="black"] .settings-field input,
+body[data-theme="black"] .settings-field select {
+    background: #0c0c0c;
+    border-color: #303030;
+}
+
+
+body[data-theme="black"] .settings-field input:focus,
+body[data-theme="black"] .settings-field select:focus {
+    background: #101010;
+    border-color: #666666;
+}
+
+
+body[data-theme="black"] .system-status-box {
+    background: #0c0c0c;
+    border-color: #292929;
+}
+
+
+body[data-theme="black"] .system-status-row {
+    border-color: #242424;
+}
+
+
+/* ============================================================
+   KOMPAKTE DARSTELLUNG
+   ============================================================ */
+
+body.compact-mode .settings-page {
+    gap: 12px;
+}
+
+
+body.compact-mode .settings-card {
+    padding: 17px;
+}
+
+
+body.compact-mode .settings-card-header {
+    margin-bottom: 15px;
+}
+
+
+body.compact-mode .settings-field {
+    margin-bottom: 11px;
+}
+
+
+body.compact-mode .settings-field input,
+body.compact-mode .settings-field select {
+    min-height: 38px;
+    padding: 8px 10px;
+}
+
+
+body.compact-mode .settings-switch {
+    min-height: 34px;
+}
+
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 900px) {
+
+    .settings-page {
+        grid-template-columns: 1fr;
+    }
+
+
+    .settings-card-wide {
+        grid-column: auto;
+    }
+
+
+    .settings-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+
+    .settings-save-area {
+        grid-column: auto;
+    }
+
+
+    .settings-save-button {
+        width: 100%;
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    .settings-page {
+        gap: 12px;
+        margin-top: 15px;
+    }
+
+
+    .settings-card {
+        padding: 17px;
+        border-radius: 12px;
+    }
+
+
+    .settings-card-header h3 {
+        font-size: 16px;
+    }
+
+
+    .settings-card-header p {
+        font-size: 12px;
+    }
+
+
+    .settings-card-icon {
+        width: 34px;
+        height: 34px;
+        flex-basis: 34px;
+        font-size: 16px;
+    }
+
+
+    .system-status-row {
+        font-size: 12px;
+    }
+
+}
+
+
+/* ============================================================
+   MODERNE EINSTELLUNGSSEITE
+   ============================================================ */
+
+.settings-page {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 22px;
+}
+
+.settings-card {
+    min-width: 0;
+    padding: 22px;
+    border: 1px solid #243449;
+    border-radius: 15px;
+    background: linear-gradient(145deg, #0d1a2b, #08121f);
+    color: #fff;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .16);
+}
+
+.settings-card-wide {
+    grid-column: 1 / -1;
+}
+
+.settings-card-header {
+    margin-bottom: 22px;
+}
+
+.settings-card-header > div {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+}
+
+.settings-card-header h3 {
+    margin: 0 0 5px;
+    color: #fff;
+    font-size: 18px;
+}
+
+.settings-card-header p {
+    margin: 0;
+    color: #91a1b5;
+    font-size: 13px;
+}
+
+.settings-card-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: #15263b;
+    font-size: 18px;
+}
+
+.settings-field {
+    margin-bottom: 17px;
+}
+
+.settings-field label {
+    display: block;
+    margin-bottom: 8px;
+    color: #dce5ef;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.settings-field input,
+.settings-field select {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 11px 13px;
+    border: 1px solid #2a3c52;
+    border-radius: 9px;
+    outline: none;
+    background: #0a1524;
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.settings-field input:focus,
+.settings-field select:focus {
+    border-color: #547da8;
+    box-shadow: 0 0 0 3px rgba(84,125,168,.16);
+}
+
+.settings-field small {
+    display: block;
+    margin-top: 7px;
+    color: #77899e;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.settings-switch {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 40px;
+    margin: 7px 0;
+    color: #dce5ef;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.settings-switch input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: #547da8;
+    cursor: pointer;
+}
+
+.settings-action-button {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.settings-save-area {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 2px;
+}
+
+.settings-save-button {
+    min-width: 240px;
+}
+
+.system-status-box {
+    overflow: hidden;
+    border: 1px solid #213146;
+    border-radius: 10px;
+    background: #091422;
+}
+
+.system-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 0 14px;
+    border-bottom: 1px solid #1b2a3d;
+    color: #aab8c8;
+    font-size: 13px;
+}
+
+.system-status-row:last-child {
+    border-bottom: 0;
+}
+
+.system-status-row strong {
+    color: #fff;
+    font-weight: 600;
+}
+
+.status-online {
+    color: #7fc89b !important;
+}
+
+body.font-size-small {
+    font-size: 13px;
+}
+
+body.font-size-medium {
+    font-size: 14px;
+}
+
+body.font-size-large {
+    font-size: 16px;
+}
+
+body.font-size-large .section-heading h2 {
+    font-size: 26px;
+}
+
+body[data-theme="black"] .settings-card {
+    background: linear-gradient(145deg, #111, #080808);
+    border-color: #2a2a2a;
+}
+
+body[data-theme="black"] .settings-card-icon {
+    background: #1b1b1b;
+}
+
+body[data-theme="black"] .settings-field input,
+body[data-theme="black"] .settings-field select {
+    background: #0c0c0c;
+    border-color: #303030;
+}
+
+body[data-theme="black"] .system-status-box {
+    background: #0c0c0c;
+    border-color: #292929;
+}
+
+body[data-theme="black"] .system-status-row {
+    border-color: #242424;
+}
+
+body.compact-mode .settings-page {
+    gap: 12px;
+}
+
+body.compact-mode .settings-card {
+    padding: 17px;
+}
+
+body.compact-mode .settings-field {
+    margin-bottom: 11px;
+}
+
+@media (max-width: 900px) {
+
+    .settings-page {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-card-wide,
+    .settings-save-area {
+        grid-column: auto;
+    }
+
+    .settings-save-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 600px) {
+
+    .settings-page {
+        gap: 12px;
+        margin-top: 15px;
+    }
+
+    .settings-card {
+        padding: 17px;
+        border-radius: 12px;
+    }
+
+    .settings-card-header h3 {
+        font-size: 16px;
+    }
+
+    .settings-card-icon {
+        width: 34px;
+        height: 34px;
+        flex-basis: 34px;
+        font-size: 16px;
+    }
+}

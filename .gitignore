@@ -1,0 +1,36 @@
+# Node
+node_modules/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# SQLite / local data
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/sessions.db
+data/sessions.db-shm
+data/sessions.db-wal
+
+# Backups
+*.tar.gz
+*.backup
+*.bak
+
+# macOS
+.DS_Store
+
+# Capacitor / native build output
+ios/App/Pods/
+ios/App/build/
+ios/build/
+DerivedData/
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+
+# Local logs
+*.log

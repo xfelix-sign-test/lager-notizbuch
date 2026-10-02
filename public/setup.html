@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passwort festlegen – Lager-Notizbuch</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body class="login-body">
+
+    <main class="login-container">
+        <section class="login-card">
+
+            <div class="login-logo">
+                <div class="login-logo-icon">📦</div>
+                <div>
+                    <h1>Lager-Notizbuch</h1>
+                    <p>Ersteinrichtung</p>
+                </div>
+            </div>
+
+            <div id="setupInfo" class="setup-info">
+                <strong>Willkommen!</strong>
+                <p>
+                    Lege jetzt dein persönliches Passwort fest.
+                </p>
+            </div>
+
+            <form id="setupForm">
+
+                <div class="form-group">
+                    <label>Benutzername</label>
+                    <input
+                        type="text"
+                        id="setupUsername"
+                        readonly
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Neues Passwort</label>
+                    <input
+                        type="password"
+                        id="password"
+                        autocomplete="new-password"
+                        minlength="6"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="passwordRepeat">
+                        Passwort wiederholen
+                    </label>
+                    <input
+                        type="password"
+                        id="passwordRepeat"
+                        autocomplete="new-password"
+                        minlength="6"
+                        required
+                    >
+                </div>
+
+                <button
+                    type="submit"
+                    class="login-button"
+                >
+                    Passwort festlegen
+                </button>
+
+                <div
+                    id="setupError"
+                    class="login-error"
+                ></div>
+
+            </form>
+
+        </section>
+    </main>
+
+    <script src="/js/setup.js"></script>
+
+</body>
+</html>

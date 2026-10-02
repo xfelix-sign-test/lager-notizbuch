@@ -1,0 +1,1440 @@
+import "dotenv/config";
+import express from "express";
+import session from "express-session";
+import SQLiteStoreFactory from "connect-sqlite3";
+import bcrypt from "bcrypt";
+import sqlite3 from "sqlite3";
+import { open } from "sqlite";
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const ROOT = path.join(__dirname, "..");
+const PUBLIC_DIR = path.join(ROOT, "public");
+const DATA_DIR = path.join(ROOT, "data");
+
+fs.mkdirSync(DATA_DIR, { recursive: true });
+
+const PORT = Number(process.env.PORT) || 3000;
+const APP_VERSION = "1.1.0";
+
+if (!process.env.SESSION_SECRET) {
+    console.error("FEHLER: SESSION_SECRET fehlt in .env");
+    process.exit(1);
+}
+
+if (!process.env.LOGIN_USERNAME || !process.env.LOGIN_PASSWORD) {
+    console.error("FEHLER: LOGIN_USERNAME oder LOGIN_PASSWORD fehlt in .env");
+    process.exit(1);
+}
+
+
+/* ============================================================
+   DATENBANK
+   ============================================================ */
+
+const db = await open({
+    filename: path.join(DATA_DIR, "lager.db"),
+    driver: sqlite3.Database
+});
+
+await db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        category TEXT NOT NULL DEFAULT 'programme',
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS contacts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        branch TEXT NOT NULL DEFAULT '',
+        extension TEXT NOT NULL DEFAULT '',
+        number TEXT NOT NULL DEFAULT '',
+        mobile TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS user_settings (
+        user_id INTEGER PRIMARY KEY,
+        display_name TEXT NOT NULL DEFAULT '',
+        theme TEXT NOT NULL DEFAULT 'dark',
+        compact_mode INTEGER NOT NULL DEFAULT 0
+    );
+`);
+
+
+/* ============================================================
+   DATENBANK-MIGRATIONEN
+   ============================================================ */
+
+async function addColumnIfMissing(table, column, definition) {
+    const columns = await db.all(`PRAGMA table_info(${table})`);
+
+    if (!columns.some(item => item.name === column)) {
+        await db.exec(`
+            ALTER TABLE ${table}
+            ADD COLUMN ${column} ${definition}
+        `);
+
+        console.log(`Datenbank: Spalte ${table}.${column} hinzugefügt.`);
+    }
+}
+
+
+/* Alte notes-Tabelle */
+
+await addColumnIfMissing(
+    "notes",
+    "category",
+    "TEXT NOT NULL DEFAULT 'programme'"
+);
+
+
+/* Erweiterte Einstellungen */
+
+await addColumnIfMissing(
+    "user_settings",
+    "department",
+    "TEXT NOT NULL DEFAULT ''"
+);
+
+await addColumnIfMissing(
+    "user_settings",
+    "font_size",
+    "TEXT NOT NULL DEFAULT 'medium'"
+);
+
+await addColumnIfMissing(
+    "user_settings",
+    "default_category",
+    "TEXT NOT NULL DEFAULT 'programme'"
+);
+
+await addColumnIfMissing(
+    "user_settings",
+    "note_sort",
+    "TEXT NOT NULL DEFAULT 'newest'"
+);
+
+await addColumnIfMissing(
+    "user_settings",
+    "notes_per_page",
+    "INTEGER NOT NULL DEFAULT 20"
+);
+
+await addColumnIfMissing(
+    "user_settings",
+    "contact_sort",
+    "TEXT NOT NULL DEFAULT 'name'"
+);
+
+await addColumnIfMissing(
+    "user_settings",
+    "show_branch",
+    "INTEGER NOT NULL DEFAULT 1"
+);
+
+await addColumnIfMissing(
+    "user_settings",
+    "notifications",
+    "INTEGER NOT NULL DEFAULT 1"
+);
+
+await addColumnIfMissing(
+    "user_settings",
+    "save_confirmation",
+    "INTEGER NOT NULL DEFAULT 1"
+);
+
+await addColumnIfMissing(
+    "user_settings",
+    "auto_logout",
+    "INTEGER NOT NULL DEFAULT 0"
+);
+
+
+/* ============================================================
+   BENUTZER
+   ============================================================ */
+
+const username = process.env.LOGIN_USERNAME;
+const password = process.env.LOGIN_PASSWORD;
+
+let existingUser = await db.get(
+    "SELECT id FROM users WHERE username = ?",
+    username
+);
+
+if (!existingUser) {
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    const result = await db.run(
+        `
+        INSERT INTO users
+        (username, password_hash)
+        VALUES (?, ?)
+        `,
+        username,
+        passwordHash
+    );
+
+    existingUser = {
+        id: result.lastID
+    };
+
+    console.log(`Benutzer "${username}" wurde angelegt.`);
+}
+
+
+/* Einstellungen sicherstellen */
+
+await db.run(
+    `
+    INSERT OR IGNORE INTO user_settings
+    (
+        user_id,
+        display_name,
+        theme,
+        compact_mode,
+        department,
+        font_size,
+        default_category,
+        note_sort,
+        notes_per_page,
+        contact_sort,
+        show_branch,
+        notifications,
+        save_confirmation,
+        auto_logout
+    )
+    VALUES (
+        ?,
+        ?,
+        'dark',
+        0,
+        '',
+        'medium',
+        'programme',
+        'newest',
+        20,
+        'name',
+        1,
+        1,
+        1,
+        0
+    )
+    `,
+    existingUser.id,
+    username
+);
+
+
+/* ============================================================
+   EXPRESS
+   ============================================================ */
+
+const app = express();
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+const SQLiteStore = SQLiteStoreFactory(session);
+
+app.use(
+    session({
+        store: new SQLiteStore({
+            db: "sessions.db",
+            dir: DATA_DIR
+        }),
+
+        secret: process.env.SESSION_SECRET,
+
+        resave: false,
+
+        saveUninitialized: false,
+
+        cookie: {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: false,
+            maxAge: 1000 * 60 * 60 * 8
+        }
+    })
+);
+
+app.use(express.static(PUBLIC_DIR));
+
+
+/* ============================================================
+   AUTH
+   ============================================================ */
+
+function requireLogin(req, res, next) {
+    if (!req.session.userId) {
+        return res.status(401).json({
+            error: "Nicht angemeldet."
+        });
+    }
+
+    next();
+}
+
+
+/* ============================================================
+   LOGIN
+   ============================================================ */
+
+app.post("/api/login", async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({
+                error: "Benutzername und Passwort erforderlich."
+            });
+        }
+
+        const user = await db.get(
+            `
+            SELECT id, username, password_hash
+            FROM users
+            WHERE username = ?
+            `,
+            username
+        );
+
+        if (!user) {
+            return res.status(401).json({
+                error: "Benutzername oder Passwort falsch."
+            });
+        }
+
+        const passwordCorrect = await bcrypt.compare(
+            password,
+            user.password_hash
+        );
+
+        if (!passwordCorrect) {
+            return res.status(401).json({
+                error: "Benutzername oder Passwort falsch."
+            });
+        }
+
+        req.session.userId = user.id;
+        req.session.username = user.username;
+
+        res.json({
+            success: true
+        });
+
+    } catch (error) {
+        console.error("LOGIN FEHLER:", error);
+
+        res.status(500).json({
+            error: "Interner Serverfehler."
+        });
+    }
+});
+
+
+/* ============================================================
+   LOGOUT
+   ============================================================ */
+
+app.post("/api/logout", (req, res) => {
+    req.session.destroy(error => {
+        if (error) {
+            console.error("LOGOUT FEHLER:", error);
+
+            return res.status(500).json({
+                error: "Logout fehlgeschlagen."
+            });
+        }
+
+        res.clearCookie("connect.sid");
+
+        res.json({
+            success: true
+        });
+    });
+});
+
+
+/* ============================================================
+   ME
+   ============================================================ */
+
+app.get("/api/me", requireLogin, async (req, res) => {
+    try {
+        const settings = await db.get(
+            `
+            SELECT *
+            FROM user_settings
+            WHERE user_id = ?
+            `,
+            req.session.userId
+        );
+
+        res.json({
+            authenticated: true,
+            username: req.session.username,
+            settings: settings || {
+                display_name: "",
+                theme: "dark",
+                compact_mode: 0,
+                department: "",
+                font_size: "medium",
+                default_category: "programme",
+                note_sort: "newest",
+                notes_per_page: 20,
+                contact_sort: "name",
+                show_branch: 1,
+                notifications: 1,
+                save_confirmation: 1,
+                auto_logout: 0
+            }
+        });
+
+    } catch (error) {
+        console.error("ME FEHLER:", error);
+
+        res.status(500).json({
+            error: "Benutzerdaten konnten nicht geladen werden."
+        });
+    }
+});
+
+
+/* ============================================================
+   NOTIZEN
+   ============================================================ */
+
+app.get("/api/notes", requireLogin, async (req, res) => {
+    try {
+        const category = req.query.category;
+
+        let notes;
+
+        if (category) {
+            notes = await db.all(
+                `
+                SELECT
+                    id,
+                    title,
+                    content,
+                    category,
+                    created_at,
+                    updated_at
+                FROM notes
+                WHERE category = ?
+                ORDER BY updated_at DESC, id DESC
+                `,
+                category
+            );
+        } else {
+            notes = await db.all(`
+                SELECT
+                    id,
+                    title,
+                    content,
+                    category,
+                    created_at,
+                    updated_at
+                FROM notes
+                ORDER BY updated_at DESC, id DESC
+            `);
+        }
+
+        res.json(notes);
+
+    } catch (error) {
+        console.error("NOTIZEN LADEN FEHLER:", error);
+
+        res.status(500).json({
+            error: "Notizen konnten nicht geladen werden."
+        });
+    }
+});
+
+
+app.get("/api/notes/:id", requireLogin, async (req, res) => {
+    try {
+        const note = await db.get(
+            `
+            SELECT *
+            FROM notes
+            WHERE id = ?
+            `,
+            req.params.id
+        );
+
+        if (!note) {
+            return res.status(404).json({
+                error: "Notiz nicht gefunden."
+            });
+        }
+
+        res.json(note);
+
+    } catch (error) {
+        console.error("NOTIZ LADEN FEHLER:", error);
+
+        res.status(500).json({
+            error: "Notiz konnte nicht geladen werden."
+        });
+    }
+});
+
+
+app.post("/api/notes", requireLogin, async (req, res) => {
+    try {
+        const {
+            title,
+            content,
+            category
+        } = req.body;
+
+        if (!title || !title.trim()) {
+            return res.status(400).json({
+                error: "Titel fehlt."
+            });
+        }
+
+        const validCategories = [
+            "programme",
+            "ablaeufe",
+            "merke",
+            "extras"
+        ];
+
+        const selectedCategory =
+            validCategories.includes(category)
+                ? category
+                : "programme";
+
+        const result = await db.run(
+            `
+            INSERT INTO notes
+            (title, content, category)
+            VALUES (?, ?, ?)
+            `,
+            title.trim(),
+            content || "",
+            selectedCategory
+        );
+
+        const note = await db.get(
+            `
+            SELECT *
+            FROM notes
+            WHERE id = ?
+            `,
+            result.lastID
+        );
+
+        res.status(201).json(note);
+
+    } catch (error) {
+        console.error("NOTIZ ERSTELLEN FEHLER:", error);
+
+        res.status(500).json({
+            error: "Notiz konnte nicht erstellt werden."
+        });
+    }
+});
+
+
+app.put("/api/notes/:id", requireLogin, async (req, res) => {
+    try {
+        const {
+            title,
+            content,
+            category
+        } = req.body;
+
+        if (!title || !title.trim()) {
+            return res.status(400).json({
+                error: "Titel fehlt."
+            });
+        }
+
+        const existing = await db.get(
+            `
+            SELECT *
+            FROM notes
+            WHERE id = ?
+            `,
+            req.params.id
+        );
+
+        if (!existing) {
+            return res.status(404).json({
+                error: "Notiz nicht gefunden."
+            });
+        }
+
+        const validCategories = [
+            "programme",
+            "ablaeufe",
+            "merke",
+            "extras"
+        ];
+
+        const selectedCategory =
+            validCategories.includes(category)
+                ? category
+                : existing.category;
+
+        await db.run(
+            `
+            UPDATE notes
+            SET
+                title = ?,
+                content = ?,
+                category = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            `,
+            title.trim(),
+            content || "",
+            selectedCategory,
+            req.params.id
+        );
+
+        const updatedNote = await db.get(
+            `
+            SELECT *
+            FROM notes
+            WHERE id = ?
+            `,
+            req.params.id
+        );
+
+        res.json(updatedNote);
+
+    } catch (error) {
+        console.error("NOTIZ BEARBEITEN FEHLER:", error);
+
+        res.status(500).json({
+            error: "Notiz konnte nicht bearbeitet werden."
+        });
+    }
+});
+
+
+app.delete("/api/notes/:id", requireLogin, async (req, res) => {
+    try {
+        const result = await db.run(
+            `
+            DELETE FROM notes
+            WHERE id = ?
+            `,
+            req.params.id
+        );
+
+        if (result.changes === 0) {
+            return res.status(404).json({
+                error: "Notiz nicht gefunden."
+            });
+        }
+
+        res.json({
+            success: true
+        });
+
+    } catch (error) {
+        console.error("NOTIZ LÖSCHEN FEHLER:", error);
+
+        res.status(500).json({
+            error: "Notiz konnte nicht gelöscht werden."
+        });
+    }
+});
+
+
+/* ============================================================
+   TELEFONVERZEICHNIS
+   ============================================================ */
+
+app.get("/api/contacts", requireLogin, async (req, res) => {
+    try {
+        const contacts = await db.all(`
+            SELECT
+                id,
+                name,
+                branch,
+                extension,
+                number,
+                mobile,
+                created_at,
+                updated_at
+            FROM contacts
+            ORDER BY name COLLATE NOCASE ASC
+        `);
+
+        res.json(contacts);
+
+    } catch (error) {
+        console.error("KONTAKTE LADEN FEHLER:", error);
+
+        res.status(500).json({
+            error: "Telefonverzeichnis konnte nicht geladen werden."
+        });
+    }
+});
+
+
+app.post("/api/contacts", requireLogin, async (req, res) => {
+    try {
+        const {
+            name,
+            branch = "",
+            extension = "",
+            number = "",
+            mobile = ""
+        } = req.body;
+
+        const cleanName = String(name || "").trim();
+        const cleanBranch = String(branch || "").trim();
+        const cleanExtension = String(extension || "").trim();
+        const cleanNumber = String(number || "").trim();
+        const cleanMobile = String(mobile || "").trim();
+
+        if (!cleanName) {
+            return res.status(400).json({
+                error: "Name ist erforderlich."
+            });
+        }
+
+        if (!cleanMobile) {
+            if (!cleanExtension || !cleanNumber) {
+                return res.status(400).json({
+                    error: "Ohne Handynummer müssen Durchwahl und Nummer angegeben werden."
+                });
+            }
+        }
+
+        if (
+            cleanExtension &&
+            !/^\d{3}$/.test(cleanExtension)
+        ) {
+            return res.status(400).json({
+                error: "Die Durchwahl muss genau 3 Ziffern haben."
+            });
+        }
+
+        if (
+            cleanNumber &&
+            !/^\d{3}$/.test(cleanNumber)
+        ) {
+            return res.status(400).json({
+                error: "Die Nummer muss genau 3 Ziffern haben."
+            });
+        }
+
+        if (
+            cleanMobile &&
+            !/^\d{1,20}$/.test(cleanMobile)
+        ) {
+            return res.status(400).json({
+                error: "Die Handynummer darf nur aus maximal 20 Ziffern bestehen."
+            });
+        }
+
+        const result = await db.run(
+            `
+            INSERT INTO contacts
+            (name, branch, extension, number, mobile)
+            VALUES (?, ?, ?, ?, ?)
+            `,
+            cleanName,
+            cleanBranch,
+            cleanExtension,
+            cleanNumber,
+            cleanMobile
+        );
+
+        const contact = await db.get(
+            `
+            SELECT *
+            FROM contacts
+            WHERE id = ?
+            `,
+            result.lastID
+        );
+
+        res.status(201).json(contact);
+
+    } catch (error) {
+        console.error("KONTAKT ERSTELLEN FEHLER:", error);
+
+        res.status(500).json({
+            error: "Kontakt konnte nicht erstellt werden."
+        });
+    }
+});
+
+
+app.put("/api/contacts/:id", requireLogin, async (req, res) => {
+    try {
+        const {
+            name,
+            branch = "",
+            extension = "",
+            number = "",
+            mobile = ""
+        } = req.body;
+
+        const cleanName = String(name || "").trim();
+        const cleanBranch = String(branch || "").trim();
+        const cleanExtension = String(extension || "").trim();
+        const cleanNumber = String(number || "").trim();
+        const cleanMobile = String(mobile || "").trim();
+
+        const existing = await db.get(
+            `
+            SELECT *
+            FROM contacts
+            WHERE id = ?
+            `,
+            req.params.id
+        );
+
+        if (!existing) {
+            return res.status(404).json({
+                error: "Kontakt nicht gefunden."
+            });
+        }
+
+        if (!cleanName) {
+            return res.status(400).json({
+                error: "Name ist erforderlich."
+            });
+        }
+
+        if (!cleanMobile) {
+            if (!cleanExtension || !cleanNumber) {
+                return res.status(400).json({
+                    error: "Ohne Handynummer müssen Durchwahl und Nummer angegeben werden."
+                });
+            }
+        }
+
+        if (
+            cleanExtension &&
+            !/^\d{3}$/.test(cleanExtension)
+        ) {
+            return res.status(400).json({
+                error: "Die Durchwahl muss genau 3 Ziffern haben."
+            });
+        }
+
+        if (
+            cleanNumber &&
+            !/^\d{3}$/.test(cleanNumber)
+        ) {
+            return res.status(400).json({
+                error: "Die Nummer muss genau 3 Ziffern haben."
+            });
+        }
+
+        if (
+            cleanMobile &&
+            !/^\d{1,20}$/.test(cleanMobile)
+        ) {
+            return res.status(400).json({
+                error: "Die Handynummer darf nur aus maximal 20 Ziffern bestehen."
+            });
+        }
+
+        await db.run(
+            `
+            UPDATE contacts
+            SET
+                name = ?,
+                branch = ?,
+                extension = ?,
+                number = ?,
+                mobile = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            `,
+            cleanName,
+            cleanBranch,
+            cleanExtension,
+            cleanNumber,
+            cleanMobile,
+            req.params.id
+        );
+
+        const contact = await db.get(
+            `
+            SELECT *
+            FROM contacts
+            WHERE id = ?
+            `,
+            req.params.id
+        );
+
+        res.json(contact);
+
+    } catch (error) {
+        console.error("KONTAKT BEARBEITEN FEHLER:", error);
+
+        res.status(500).json({
+            error: "Kontakt konnte nicht bearbeitet werden."
+        });
+    }
+});
+
+
+app.delete("/api/contacts/:id", requireLogin, async (req, res) => {
+    try {
+        const result = await db.run(
+            `
+            DELETE FROM contacts
+            WHERE id = ?
+            `,
+            req.params.id
+        );
+
+        if (result.changes === 0) {
+            return res.status(404).json({
+                error: "Kontakt nicht gefunden."
+            });
+        }
+
+        res.json({
+            success: true
+        });
+
+    } catch (error) {
+        console.error("KONTAKT LÖSCHEN FEHLER:", error);
+
+        res.status(500).json({
+            error: "Kontakt konnte nicht gelöscht werden."
+        });
+    }
+});
+
+
+/* ============================================================
+   EINSTELLUNGEN
+   ============================================================ */
+
+function normalizeSettings(body) {
+    const validThemes = ["dark", "black"];
+    const validFontSizes = ["small", "medium", "large"];
+    const validCategories = [
+        "programme",
+        "ablaeufe",
+        "merke",
+        "extras"
+    ];
+    const validNoteSorts = [
+        "newest",
+        "oldest",
+        "az"
+    ];
+    const validContactSorts = [
+        "name",
+        "branch"
+    ];
+    const validPageSizes = [10, 20, 50, 100];
+
+    return {
+        display_name: String(body.display_name ?? "").trim().slice(0, 100),
+
+        department:
+            String(body.department ?? "")
+                .trim()
+                .slice(0, 100),
+
+        theme:
+            validThemes.includes(body.theme)
+                ? body.theme
+                : "dark",
+
+        font_size:
+            validFontSizes.includes(body.font_size)
+                ? body.font_size
+                : "medium",
+
+        compact_mode:
+            body.compact_mode ? 1 : 0,
+
+        default_category:
+            validCategories.includes(body.default_category)
+                ? body.default_category
+                : "programme",
+
+        note_sort:
+            validNoteSorts.includes(body.note_sort)
+                ? body.note_sort
+                : "newest",
+
+        notes_per_page:
+            validPageSizes.includes(Number(body.notes_per_page))
+                ? Number(body.notes_per_page)
+                : 20,
+
+        contact_sort:
+            validContactSorts.includes(body.contact_sort)
+                ? body.contact_sort
+                : "name",
+
+        show_branch:
+            body.show_branch ? 1 : 0,
+
+        notifications:
+            body.notifications ? 1 : 0,
+
+        save_confirmation:
+            body.save_confirmation ? 1 : 0,
+
+        auto_logout:
+            body.auto_logout ? 1 : 0
+    };
+}
+
+
+async function getSettings(userId) {
+    return await db.get(
+        `
+        SELECT
+            user_id,
+            display_name,
+            theme,
+            compact_mode,
+            department,
+            font_size,
+            default_category,
+            note_sort,
+            notes_per_page,
+            contact_sort,
+            show_branch,
+            notifications,
+            save_confirmation,
+            auto_logout
+        FROM user_settings
+        WHERE user_id = ?
+        `,
+        userId
+    );
+}
+
+
+app.get("/api/settings", requireLogin, async (req, res) => {
+    try {
+        let settings = await getSettings(req.session.userId);
+
+        if (!settings) {
+            await db.run(
+                `
+                INSERT INTO user_settings
+                (
+                    user_id,
+                    display_name,
+                    theme,
+                    compact_mode,
+                    department,
+                    font_size,
+                    default_category,
+                    note_sort,
+                    notes_per_page,
+                    contact_sort,
+                    show_branch,
+                    notifications,
+                    save_confirmation,
+                    auto_logout
+                )
+                VALUES (?, ?, 'dark', 0, '', 'medium',
+                        'programme', 'newest', 20, 'name',
+                        1, 1, 1, 0)
+                `,
+                req.session.userId,
+                req.session.username
+            );
+
+            settings = await getSettings(req.session.userId);
+        }
+
+        res.json({
+            ...settings,
+            username: req.session.username,
+            version: APP_VERSION
+        });
+
+    } catch (error) {
+        console.error("EINSTELLUNGEN LADEN FEHLER:", error);
+
+        res.status(500).json({
+            error: "Einstellungen konnten nicht geladen werden."
+        });
+    }
+});
+
+
+app.put("/api/settings", requireLogin, async (req, res) => {
+    try {
+        const settings = normalizeSettings(req.body);
+
+        await db.run(
+            `
+            INSERT INTO user_settings
+            (
+                user_id,
+                display_name,
+                theme,
+                compact_mode,
+                department,
+                font_size,
+                default_category,
+                note_sort,
+                notes_per_page,
+                contact_sort,
+                show_branch,
+                notifications,
+                save_confirmation,
+                auto_logout
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+
+            ON CONFLICT(user_id)
+            DO UPDATE SET
+                display_name = excluded.display_name,
+                theme = excluded.theme,
+                compact_mode = excluded.compact_mode,
+                department = excluded.department,
+                font_size = excluded.font_size,
+                default_category = excluded.default_category,
+                note_sort = excluded.note_sort,
+                notes_per_page = excluded.notes_per_page,
+                contact_sort = excluded.contact_sort,
+                show_branch = excluded.show_branch,
+                notifications = excluded.notifications,
+                save_confirmation = excluded.save_confirmation,
+                auto_logout = excluded.auto_logout
+            `,
+            req.session.userId,
+            settings.display_name,
+            settings.theme,
+            settings.compact_mode,
+            settings.department,
+            settings.font_size,
+            settings.default_category,
+            settings.note_sort,
+            settings.notes_per_page,
+            settings.contact_sort,
+            settings.show_branch,
+            settings.notifications,
+            settings.save_confirmation,
+            settings.auto_logout
+        );
+
+        const saved = await getSettings(req.session.userId);
+
+        res.json({
+            ...saved,
+            username: req.session.username,
+            version: APP_VERSION
+        });
+
+    } catch (error) {
+        console.error("EINSTELLUNGEN SPEICHERN FEHLER:", error);
+
+        res.status(500).json({
+            error: "Einstellungen konnten nicht gespeichert werden."
+        });
+    }
+});
+
+
+/* ============================================================
+   EINSTELLUNGEN ZURÜCKSETZEN
+   ============================================================ */
+
+app.post("/api/settings/reset", requireLogin, async (req, res) => {
+    try {
+        await db.run(
+            `
+            UPDATE user_settings
+            SET
+                display_name = ?,
+                theme = 'dark',
+                compact_mode = 0,
+                department = '',
+                font_size = 'medium',
+                default_category = 'programme',
+                note_sort = 'newest',
+                notes_per_page = 20,
+                contact_sort = 'name',
+                show_branch = 1,
+                notifications = 1,
+                save_confirmation = 1,
+                auto_logout = 0
+            WHERE user_id = ?
+            `,
+            req.session.username,
+            req.session.userId
+        );
+
+        const settings = await getSettings(req.session.userId);
+
+        res.json({
+            success: true,
+            ...settings
+        });
+
+    } catch (error) {
+        console.error("EINSTELLUNGEN RESET FEHLER:", error);
+
+        res.status(500).json({
+            error: "Einstellungen konnten nicht zurückgesetzt werden."
+        });
+    }
+});
+
+
+/* ============================================================
+   DATEN EXPORTIEREN
+   ============================================================ */
+
+app.get("/api/settings/export", requireLogin, async (req, res) => {
+    try {
+        const settings = await getSettings(req.session.userId);
+
+        const notes = await db.all(`
+            SELECT
+                id,
+                title,
+                content,
+                category,
+                created_at,
+                updated_at
+            FROM notes
+            ORDER BY id ASC
+        `);
+
+        const contacts = await db.all(`
+            SELECT
+                id,
+                name,
+                branch,
+                extension,
+                number,
+                mobile,
+                created_at,
+                updated_at
+            FROM contacts
+            ORDER BY name COLLATE NOCASE ASC
+        `);
+
+        const exportData = {
+            application: "F8-Notizbuch",
+            version: APP_VERSION,
+            exported_at: new Date().toISOString(),
+
+            user: {
+                username: req.session.username,
+                settings
+            },
+
+            notes,
+
+            contacts
+        };
+
+        res.setHeader(
+            "Content-Type",
+            "application/json; charset=utf-8"
+        );
+
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="f8-notizbuch-export-${Date.now()}.json"`
+        );
+
+        res.send(
+            JSON.stringify(
+                exportData,
+                null,
+                2
+            )
+        );
+
+    } catch (error) {
+        console.error("EXPORT FEHLER:", error);
+
+        res.status(500).json({
+            error: "Daten konnten nicht exportiert werden."
+        });
+    }
+});
+
+
+/* ============================================================
+   PASSWORT ÄNDERN
+   ============================================================ */
+
+app.put("/api/settings/password", requireLogin, async (req, res) => {
+    try {
+        const currentPassword =
+            req.body.current_password ??
+            req.body.currentPassword;
+
+        const newPassword =
+            req.body.new_password ??
+            req.body.newPassword;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({
+                error: "Altes und neues Passwort sind erforderlich."
+            });
+        }
+
+        if (newPassword.length < 8) {
+            return res.status(400).json({
+                error: "Das neue Passwort muss mindestens 8 Zeichen haben."
+            });
+        }
+
+        const user = await db.get(
+            `
+            SELECT *
+            FROM users
+            WHERE id = ?
+            `,
+            req.session.userId
+        );
+
+        if (!user) {
+            return res.status(401).json({
+                error: "Benutzer nicht gefunden."
+            });
+        }
+
+        const correct = await bcrypt.compare(
+            currentPassword,
+            user.password_hash
+        );
+
+        if (!correct) {
+            return res.status(400).json({
+                error: "Das aktuelle Passwort ist falsch."
+            });
+        }
+
+        const passwordHash =
+            await bcrypt.hash(
+                newPassword,
+                12
+            );
+
+        await db.run(
+            `
+            UPDATE users
+            SET password_hash = ?
+            WHERE id = ?
+            `,
+            passwordHash,
+            req.session.userId
+        );
+
+        res.json({
+            success: true
+        });
+
+    } catch (error) {
+        console.error("PASSWORT ÄNDERN FEHLER:", error);
+
+        res.status(500).json({
+            error: "Passwort konnte nicht geändert werden."
+        });
+    }
+});
+
+
+/* ============================================================
+   SYSTEMSTATUS
+   ============================================================ */
+
+app.get("/api/system/status", requireLogin, async (req, res) => {
+    try {
+        await db.get("SELECT 1 AS ok");
+
+        const noteCount = await db.get(
+            "SELECT COUNT(*) AS count FROM notes"
+        );
+
+        const contactCount = await db.get(
+            "SELECT COUNT(*) AS count FROM contacts"
+        );
+
+        res.json({
+            online: true,
+            version: APP_VERSION,
+            database: "online",
+            notes: noteCount.count,
+            contacts: contactCount.count
+        });
+
+    } catch (error) {
+        console.error("SYSTEMSTATUS FEHLER:", error);
+
+        res.status(500).json({
+            online: false,
+            database: "offline",
+            error: "Systemstatus konnte nicht ermittelt werden."
+        });
+    }
+});
+
+
+/* ============================================================
+   APP
+   ============================================================ */
+
+app.get("/app", (req, res) => {
+    if (!req.session.userId) {
+        return res.redirect("/");
+    }
+
+    res.sendFile(
+        path.join(PUBLIC_DIR, "app.html")
+    );
+});
+
+
+/* ============================================================
+   SERVER
+   ============================================================ */
+
+app.listen(
+    PORT,
+    "0.0.0.0",
+    () => {
+        console.log("");
+        console.log("======================================");
+        console.log("       LAGER-NOTIZBUCH");
+        console.log("======================================");
+        console.log(`Version: ${APP_VERSION}`);
+        console.log(`Server läuft auf Port ${PORT}`);
+        console.log("");
+    }
+);

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F8 – Notizbuch</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body class="login-page">
+
+<div class="login-container">
+
+    <div class="login-card">
+
+        <div class="login-logo">
+            <img
+                src="https://upload.wikimedia.org/wikipedia/commons/4/4d/XXXLutz_2009_logo.svg"
+                alt="XXXLutz"
+            >
+        </div>
+
+        <div class="login-title">
+            <h1>F8 – Notizbuch</h1>
+            <p>Interner Bereich</p>
+        </div>
+
+        <form id="loginForm">
+
+            <label for="username">Kurzzeichen</label>
+
+            <input
+                id="username"
+                type="text"
+                autocomplete="username"
+                placeholder="Kurzzeichen eingeben"
+                required
+            >
+
+            <label for="password">Passwort</label>
+
+            <input
+                id="password"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Passwort eingeben"
+                required
+            >
+
+            <button type="submit">
+                Anmelden
+            </button>
+
+            <div id="error"></div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<script src="/js/login.js"></script>
+
+</body>
+</html>
