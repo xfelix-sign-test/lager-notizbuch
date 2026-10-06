@@ -3,6 +3,7 @@
   "appName": "F8 Notizbuch",
   "webDir": "public",
   "server": {
-    "cleartext": true
+    "cleartext": true,
+    "url": "http://162.120.6.76:3000"
   }
 }
