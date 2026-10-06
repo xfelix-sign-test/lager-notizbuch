@@ -63,7 +63,7 @@ async function checkLogin() {
 
         const response = await fetch("/api/me", {
             method: "GET",
-            credentials: "same-origin",
+            credentials: "include",
             cache: "no-store"
         });
 
