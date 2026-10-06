@@ -86,7 +86,7 @@ async function checkLogin() {
                 "API /api/me Fehler:",
                 response.status
             );
-            window.location.href = "/";
+            document.body.innerHTML = '<pre style="padding:20px">API /api/me STATUS: ' + response.status + '</pre>';
             return;
         }
 
