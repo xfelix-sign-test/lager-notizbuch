@@ -1,3 +1,12 @@
+const API_BASE_URL = "http://162.120.6.76:3000";
+const originalFetch = window.fetch.bind(window);
+window.fetch = (input, init = {}) => {
+    if (typeof input === "string" && input.startsWith("/api/")) {
+        input = API_BASE_URL + input;
+        init.credentials = "include";
+    }
+    return originalFetch(input, init);
+};
 const menuCards = document.querySelectorAll(".menu-card");
 
 const menuGrid = document.getElementById("menuGrid");
