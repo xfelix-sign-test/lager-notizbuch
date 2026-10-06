@@ -93,8 +93,7 @@ async function checkLogin() {
         const user = await response.json();
 
         if (!user.authenticated) {
-            console.error("Keine gültige Anmeldung.");
-            window.location.href = "/";
+            document.body.innerHTML = "<pre>API ME: " + JSON.stringify(user, null, 2) + "</pre>";
             return;
         }
 
