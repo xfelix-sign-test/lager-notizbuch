@@ -97,6 +97,8 @@ form.addEventListener("submit", async (event) => {
         }
 
         /* Benutzer und Mobile-Token lokal speichern */
+        localStorage.setItem("mobile_token", data.token);
+        console.log("F8 TOKEN GESPEICHERT:", !!localStorage.getItem("mobile_token"));
         try {
             const dbRequest =
                 indexedDB.open("lager-notizbuch");
@@ -116,11 +118,27 @@ form.addEventListener("submit", async (event) => {
                         },
                         token: data.token
                     });
+
+                    transaction.oncomplete = () => {
+                        window.location.href = "/app";
+                    };
+
+                    transaction.onerror = () => {
+                        window.location.href = "/app";
+                    };
+
+                    return;
                 }
+
+                window.location.href = "/app";
+            };
+
+            dbRequest.onerror = () => {
+                window.location.href = "/app";
             };
         } catch {}
 
-        window.location.href = "/app";
+        /* Weiterleitung erfolgt nach abgeschlossenem IndexedDB-Speichern */
 
     } catch (error) {
         /* Internet weg während Login */
