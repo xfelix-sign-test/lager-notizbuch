@@ -73,6 +73,13 @@ await db.exec(`
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS mobile_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS user_settings (
         user_id INTEGER PRIMARY KEY,
         display_name TEXT NOT NULL DEFAULT '',
@@ -320,6 +327,36 @@ async function getCurrentUser(req) {
 }
 
 async function requireLogin(req, res, next) {
+    const auth = req.headers.authorization || "";
+
+    if (auth.startsWith("Bearer ")) {
+        const token = auth.slice(7).trim();
+
+        if (token) {
+            const tokenHash = crypto
+                .createHash("sha256")
+                .update(token)
+                .digest("hex");
+
+            const tokenUser = await db.get(
+                `SELECT user_id FROM mobile_tokens WHERE token_hash = ?`,
+                tokenHash
+            );
+
+            if (tokenUser) {
+                const user = await db.get(
+                    `SELECT * FROM users WHERE id = ?`,
+                    tokenUser.user_id
+                );
+
+                if (user) {
+                    req.user = user;
+                    return next();
+                }
+            }
+        }
+    }
+
     const user = await getCurrentUser(req);
 
     if (!user) {
@@ -424,8 +461,26 @@ app.post("/api/login", async (req, res) => {
         req.session.pendingSetupUserId = null;
         req.session.pendingSetupExpires = null;
 
+        const token = crypto.randomBytes(32).toString("hex");
+        const tokenHash = crypto
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
+
+        await db.run(
+            `DELETE FROM mobile_tokens WHERE user_id = ?`,
+            user.id
+        );
+
+        await db.run(
+            `INSERT INTO mobile_tokens (user_id, token_hash) VALUES (?, ?)`,
+            user.id,
+            tokenHash
+        );
+
         return res.json({
-            success: true
+            success: true,
+            token
         });
     } catch (error) {
         console.error("LOGIN ERROR:", error);

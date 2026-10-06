@@ -96,7 +96,7 @@ form.addEventListener("submit", async (event) => {
             return;
         }
 
-        /* Benutzer lokal speichern */
+        /* Benutzer und Mobile-Token lokal speichern */
         try {
             const dbRequest =
                 indexedDB.open("lager-notizbuch");
@@ -111,9 +111,10 @@ form.addEventListener("submit", async (event) => {
                     transaction.objectStore("session").put({
                         key: "current-user",
                         user: {
-                            username: data.username,
+                            username,
                             is_admin: data.is_admin
-                        }
+                        },
+                        token: data.token
                     });
                 }
             };

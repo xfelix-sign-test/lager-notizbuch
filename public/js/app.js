@@ -1,9 +1,23 @@
 const API_BASE_URL = "http://162.120.6.76:3000";
 const originalFetch = window.fetch.bind(window);
-window.fetch = (input, init = {}) => {
+window.fetch = async (input, init = {}) => {
     if (typeof input === "string" && input.startsWith("/api/")) {
         input = API_BASE_URL + input;
         init.credentials = "include";
+        const request = indexedDB.open("lager-notizbuch");
+        const token = await new Promise(resolve => {
+            request.onsuccess = () => {
+                const db = request.result;
+                if (!db.objectStoreNames.contains("session")) return resolve(null);
+                const tx = db.transaction("session", "readonly");
+                const get = tx.objectStore("session").get("current-user");
+                get.onsuccess = () => resolve(get.result?.token || null);
+                get.onerror = () => resolve(null);
+            };
+            request.onerror = () => resolve(null);
+        });
+        init.headers = new Headers(init.headers || {});
+        if (token) init.headers.set("Authorization", "Bearer " + token);
     }
     return originalFetch(input, init);
 };
