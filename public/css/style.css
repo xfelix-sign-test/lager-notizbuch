@@ -3628,3 +3628,103 @@ body.compact-mode .settings-field {
     }
 
 }
+
+/* =========================================
+   MOBILE / IPHONE OPTIMIERUNG
+   ========================================= */
+
+@media (max-width: 650px) {
+
+    .main-content {
+        width: min(100% - 28px, 520px);
+        min-height: calc(100vh - 76px);
+        padding: 70px 0 50px;
+    }
+
+    .welcome {
+        text-align: center;
+        margin-bottom: 28px;
+    }
+
+    .welcome h1 {
+        text-align: center;
+        font-size: 29px;
+    }
+
+    .welcome p {
+        font-size: 16px;
+    }
+
+    .menu-grid {
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .menu-card {
+        min-height: 112px;
+        padding: 22px;
+        border-radius: 18px;
+        gap: 18px;
+    }
+
+    .menu-icon {
+        width: 58px;
+        height: 58px;
+        border-radius: 15px;
+        font-size: 27px;
+    }
+
+    .menu-text h2 {
+        font-size: 20px;
+    }
+
+    .menu-text p {
+        font-size: 15px;
+    }
+
+    input,
+    button {
+        font-size: 16px;
+    }
+
+    .topbar {
+        padding: 0 18px;
+    }
+}
+
+/* =========================================
+   SMOOTHNESS / PERFORMANCE
+   ========================================= */
+
+.menu-card {
+    -webkit-tap-highlight-color: transparent;
+    will-change: transform;
+}
+
+@media (max-width: 650px) {
+    .menu-card {
+        transition:
+            border-color 0.12s ease,
+            background 0.12s ease;
+    }
+
+    .menu-card:hover {
+        transform: none;
+    }
+
+    .menu-card:active {
+        transform: scale(0.985);
+    }
+}
+
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+button,
+.menu-card {
+    touch-action: manipulation;
+}

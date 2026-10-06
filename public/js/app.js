@@ -1,26 +1,76 @@
 const API_BASE_URL = "http://162.120.6.76:3000";
+
 const originalFetch = window.fetch.bind(window);
+
+let mobileToken = null;
+let mobileTokenPromise = null;
+
+async function getMobileToken() {
+    if (mobileToken) {
+        return mobileToken;
+    }
+
+    if (mobileTokenPromise) {
+        return mobileTokenPromise;
+    }
+
+    mobileTokenPromise = new Promise(resolve => {
+        const request = indexedDB.open("lager-notizbuch");
+
+        request.onsuccess = () => {
+            const db = request.result;
+
+            if (!db.objectStoreNames.contains("session")) {
+                mobileTokenPromise = null;
+                resolve(null);
+                return;
+            }
+
+            const tx = db.transaction("session", "readonly");
+            const get = tx.objectStore("session").get("current-user");
+
+            get.onsuccess = () => {
+                mobileToken = get.result?.token || null;
+                mobileTokenPromise = null;
+                resolve(mobileToken);
+            };
+
+            get.onerror = () => {
+                mobileTokenPromise = null;
+                resolve(null);
+            };
+        };
+
+        request.onerror = () => {
+            mobileTokenPromise = null;
+            resolve(null);
+        };
+    });
+
+    return mobileTokenPromise;
+}
+
 window.fetch = async (input, init = {}) => {
     if (typeof input === "string" && input.startsWith("/api/")) {
         input = API_BASE_URL + input;
-        init.credentials = "include";
-        const request = indexedDB.open("lager-notizbuch");
-        const token = await new Promise(resolve => {
-            request.onsuccess = () => {
-                const db = request.result;
-                if (!db.objectStoreNames.contains("session")) return resolve(null);
-                const tx = db.transaction("session", "readonly");
-                const get = tx.objectStore("session").get("current-user");
-                get.onsuccess = () => resolve(get.result?.token || null);
-                get.onerror = () => resolve(null);
-            };
-            request.onerror = () => resolve(null);
-        });
+
+        init = {
+            ...init,
+            credentials: "include"
+        };
+
+        const token = await getMobileToken();
+
         init.headers = new Headers(init.headers || {});
-        if (token) init.headers.set("Authorization", "Bearer " + token);
+
+        if (token) {
+            init.headers.set("Authorization", "Bearer " + token);
+        }
     }
+
     return originalFetch(input, init);
 };
+
 const menuCards = document.querySelectorAll(".menu-card");
 
 const menuGrid = document.getElementById("menuGrid");
