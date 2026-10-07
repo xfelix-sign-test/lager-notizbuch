@@ -140,47 +140,32 @@ form.addEventListener("submit", async (event) => {
         }
 
         /* Benutzer und Mobile-Token lokal speichern */
-        localStorage.setItem("mobile_token", data.token);
-        console.log("F8 TOKEN GESPEICHERT:", !!localStorage.getItem("mobile_token"));
         try {
-            const dbRequest =
-                indexedDB.open("lager-notizbuch");
+            const db = await new Promise((resolve, reject) => {
+                const r = indexedDB.open(DB_NAME, DB_VERSION);
+                r.onupgradeneeded = e => {
+                    const d = e.target.result;
+                    if (!d.objectStoreNames.contains("session"))
+                        d.createObjectStore("session", {keyPath:"key"});
+                };
+                r.onsuccess = () => resolve(r.result);
+                r.onerror = () => reject(r.error);
+            });
 
-            dbRequest.onsuccess = () => {
-                const db = dbRequest.result;
+            const tx = db.transaction("session", "readwrite");
+            tx.objectStore("session").put({
+                key: "current-user",
+                user: {username, is_admin: data.is_admin},
+                token: data.token,
+                expiresAt: Date.now() + 86400000
+            });
 
-                if (db.objectStoreNames.contains("session")) {
-                    const transaction =
-                        db.transaction("session", "readwrite");
-
-                    transaction.objectStore("session").put({
-                        key: "current-user",
-                        user: {
-                            username,
-                            is_admin: data.is_admin
-                        },
-                        token: data.token,
-                        expiresAt: Date.now() + (24 * 60 * 60 * 1000)
-                    });
-
-                    transaction.oncomplete = () => {
-                        window.location.href = "/app";
-                    };
-
-                    transaction.onerror = () => {
-                        window.location.href = "/app";
-                    };
-
-                    return;
-                }
-
-                window.location.href = "/app";
-            };
-
-            dbRequest.onerror = () => {
-                window.location.href = "/app";
-            };
-        } catch {}
+            tx.oncomplete = () => window.location.href = "/app";
+            tx.onerror = () => window.location.href = "/app";
+        } catch (error) {
+            console.error("Login-Speicherung fehlgeschlagen:", error);
+            window.location.href = "/app";
+        }
 
         /* Weiterleitung erfolgt nach abgeschlossenem IndexedDB-Speichern */
 
