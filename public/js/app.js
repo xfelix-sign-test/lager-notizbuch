@@ -3584,15 +3584,53 @@ document
         "click",
         async () => {
 
-            await fetch(
-                "/api/logout",
-                {
-                    method: "POST"
-                }
-            );
+            try {
+                await fetch(
+                    "/api/logout",
+                    {
+                        method: "POST"
+                    }
+                );
+            } catch (error) {
+                console.warn("Server-Abmeldung nicht erreichbar:", error);
+            }
 
-            window.location.href = "/";
+            try {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
 
+                request.onsuccess = () => {
+                    const db = request.result;
+
+                    if (db.objectStoreNames.contains("session")) {
+                        const transaction = db.transaction(
+                            "session",
+                            "readwrite"
+                        );
+
+                        transaction.objectStore("session").clear();
+
+                        transaction.oncomplete = () => {
+                            db.close();
+                            window.location.href = "/";
+                        };
+                    } else {
+                        db.close();
+                        window.location.href = "/";
+                    }
+                };
+
+                request.onerror = () => {
+                    window.location.href = "/";
+                };
+
+            } catch (error) {
+                console.warn(
+                    "Lokale Sitzung konnte nicht gelöscht werden:",
+                    error
+                );
+
+                window.location.href = "/";
+            }
         }
     );
 
