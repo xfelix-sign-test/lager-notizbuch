@@ -21,7 +21,17 @@ async function getLocalSession() {
                 const request = store.get("current-user");
 
                 request.onsuccess = () => {
-                    resolve(request.result?.user || null);
+                    const session = request.result;
+
+                    if (
+                        session?.token &&
+                        session?.expiresAt &&
+                        Date.now() < session.expiresAt
+                    ) {
+                        resolve(session);
+                    } else {
+                        resolve(null);
+                    }
                 };
 
                 request.onerror = () => resolve(null);
@@ -33,6 +43,16 @@ async function getLocalSession() {
         return null;
     }
 }
+
+async function checkRememberedLogin() {
+    const session = await getLocalSession();
+
+    if (session?.token) {
+        window.location.href = "/app";
+    }
+}
+
+checkRememberedLogin();
 
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -116,7 +136,8 @@ form.addEventListener("submit", async (event) => {
                             username,
                             is_admin: data.is_admin
                         },
-                        token: data.token
+                        token: data.token,
+                        expiresAt: Date.now() + (24 * 60 * 60 * 1000)
                     });
 
                     transaction.oncomplete = () => {

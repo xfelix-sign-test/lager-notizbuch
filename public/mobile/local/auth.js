@@ -19,6 +19,15 @@ export async function getLocalSession() {
         SESSION_KEY
     );
 
+    if (!result) {
+        return null;
+    }
+
+    if (result.expiresAt && Date.now() > result.expiresAt) {
+        await clearLocalSession();
+        return null;
+    }
+
     return result?.user || null;
 }
 
