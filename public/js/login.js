@@ -1,45 +1,68 @@
 const API_BASE_URL = "http://162.120.6.76:3000";
 
+const DB_NAME = "lager-notizbuch";
+const DB_VERSION = 1;
+
 const form = document.getElementById("loginForm");
 const errorElement = document.getElementById("error");
 
 async function getLocalSession() {
     try {
-        const dbRequest = indexedDB.open("lager-notizbuch");
+        const db = await new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-        return await new Promise((resolve) => {
-            dbRequest.onsuccess = () => {
-                const db = dbRequest.result;
+            request.onupgradeneeded = (event) => {
+                const database = event.target.result;
 
-                if (!db.objectStoreNames.contains("session")) {
-                    resolve(null);
-                    return;
+                if (!database.objectStoreNames.contains("notes")) {
+                    database.createObjectStore("notes", { keyPath: "id" });
                 }
 
-                const transaction = db.transaction("session", "readonly");
-                const store = transaction.objectStore("session");
-                const request = store.get("current-user");
+                if (!database.objectStoreNames.contains("contacts")) {
+                    database.createObjectStore("contacts", { keyPath: "id" });
+                }
 
-                request.onsuccess = () => {
-                    const session = request.result;
+                if (!database.objectStoreNames.contains("settings")) {
+                    database.createObjectStore("settings", { keyPath: "user_id" });
+                }
 
-                    if (
-                        session?.token &&
-                        session?.expiresAt &&
-                        Date.now() < session.expiresAt
-                    ) {
-                        resolve(session);
-                    } else {
-                        resolve(null);
-                    }
-                };
+                if (!database.objectStoreNames.contains("sync")) {
+                    database.createObjectStore("sync", { keyPath: "key" });
+                }
 
-                request.onerror = () => resolve(null);
+                if (!database.objectStoreNames.contains("session")) {
+                    database.createObjectStore("session", { keyPath: "key" });
+                }
             };
 
-            dbRequest.onerror = () => resolve(null);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
         });
-    } catch {
+
+        if (!db.objectStoreNames.contains("session")) {
+            return null;
+        }
+
+        const session = await new Promise((resolve, reject) => {
+            const transaction = db.transaction("session", "readonly");
+            const request = transaction.objectStore("session").get("current-user");
+
+            request.onsuccess = () => resolve(request.result || null);
+            request.onerror = () => reject(request.error);
+        });
+
+        if (
+            session?.token &&
+            session?.expiresAt &&
+            Date.now() < session.expiresAt
+        ) {
+            return session;
+        }
+
+        return null;
+
+    } catch (error) {
+        console.error("Lokale Sitzung konnte nicht gelesen werden:", error);
         return null;
     }
 }
