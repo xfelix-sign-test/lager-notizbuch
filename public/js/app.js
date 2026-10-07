@@ -1,4 +1,6 @@
 const API_BASE_URL = "http://162.120.6.76:3000";
+const DB_NAME = "lager-notizbuch";
+const DB_VERSION = 1;
 
 const originalFetch = window.fetch.bind(window);
 
@@ -30,7 +32,18 @@ async function getMobileToken() {
             const get = tx.objectStore("session").get("current-user");
 
             get.onsuccess = () => {
-                mobileToken = get.result?.token || null;
+                const session = get.result;
+
+                if (
+                    session?.token &&
+                    session?.expiresAt &&
+                    Date.now() < session.expiresAt
+                ) {
+                    mobileToken = session.token;
+                } else {
+                    mobileToken = null;
+                }
+
                 mobileTokenPromise = null;
                 resolve(mobileToken);
             };
@@ -125,6 +138,8 @@ async function checkLogin() {
 
     try {
 
+        await getMobileToken();
+
         const response = await fetch("/api/me", {
             method: "GET",
             credentials: "include",
@@ -136,7 +151,61 @@ async function checkLogin() {
                 "API /api/me Fehler:",
                 response.status
             );
-            document.body.innerHTML = '<pre style="padding:20px">API /api/me STATUS: ' + response.status + '</pre>';
+
+            const localSession = await new Promise(resolve => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onsuccess = () => {
+                    const db = request.result;
+
+                    if (!db.objectStoreNames.contains("session")) {
+                        resolve(null);
+                        return;
+                    }
+
+                    const tx = db.transaction("session", "readonly");
+                    const get = tx.objectStore("session").get("current-user");
+
+                    get.onsuccess = () => {
+                        const session = get.result;
+
+                        if (
+                            session?.token &&
+                            session?.expiresAt &&
+                            Date.now() < session.expiresAt
+                        ) {
+                            resolve(session);
+                        } else {
+                            resolve(null);
+                        }
+                    };
+
+                    get.onerror = () => resolve(null);
+                };
+
+                request.onerror = () => resolve(null);
+            });
+
+            if (localSession?.token) {
+                mobileToken = localSession.token;
+                console.log("24h-Login: gespeicherter Token wird verwendet.");
+
+                const retry = await fetch("/api/me", {
+                    method: "GET",
+                    cache: "no-store"
+                });
+
+                if (retry.ok) {
+                    const localUser = await retry.json();
+
+                    if (localUser.authenticated) {
+                        return checkLogin();
+                    }
+                }
+            }
+
+            document.body.innerHTML =
+                '<pre style="padding:20px">Anmeldung erforderlich.</pre>';
             return;
         }
 
