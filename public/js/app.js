@@ -1350,7 +1350,7 @@ document
 
         if (
             data.mobile &&
-            !/^\d{1,40}$/.test(data.mobile)
+            !/^[0-9+() \-]{1,40}$/.test(data.mobile)
         ) {
 
             alert(
