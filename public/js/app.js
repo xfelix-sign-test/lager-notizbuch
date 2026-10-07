@@ -3584,6 +3584,8 @@ document
         "click",
         async () => {
 
+            sessionStorage.setItem("lager-logout", "1");
+
             try {
                 await fetch(
                     "/api/logout",

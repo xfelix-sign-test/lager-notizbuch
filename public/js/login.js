@@ -68,6 +68,11 @@ async function getLocalSession() {
 }
 
 async function checkRememberedLogin() {
+    if (sessionStorage.getItem("lager-logout") === "1") {
+        sessionStorage.removeItem("lager-logout");
+        return;
+    }
+
     const session = await getLocalSession();
 
     if (session?.token) {
