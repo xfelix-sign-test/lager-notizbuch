@@ -80,6 +80,26 @@ await db.exec(`
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS lagerplaetze (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        halle TEXT NOT NULL,
+        lagerplatz TEXT NOT NULL,
+        pruefziffer TEXT NOT NULL,
+        notiz TEXT DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS lagermeeting_protokolle (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        protokoll_nummer TEXT NOT NULL,
+        notiz TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS user_settings (
         user_id INTEGER PRIMARY KEY,
         display_name TEXT NOT NULL DEFAULT '',
@@ -1772,6 +1792,114 @@ app.get("/setup", (req, res) => {
 /* =========================================================
    START
 ========================================================= */
+
+
+/* =========================
+   Lagerplätze
+========================= */
+
+app.get("/api/lagerplaetze", requireLogin, async (req, res) => {
+    const rows = await db.all(`
+        SELECT * FROM lagerplaetze
+        WHERE user_id = ?
+        ORDER BY halle, lagerplatz
+    `, req.user.id);
+
+    res.json(rows);
+});
+
+app.post("/api/lagerplaetze", requireLogin, async (req, res) => {
+    const { halle, lagerplatz, pruefziffer, notiz = "" } = req.body;
+
+    if (!["Halle 1", "Halle 2", "Halle 3", "Abpackhalle"].includes(halle)) {
+        return res.status(400).json({ error: "Ungültige Halle." });
+    }
+
+    if (!lagerplatz || !pruefziffer) {
+        return res.status(400).json({ error: "Lagerplatz und Prüfziffer sind erforderlich." });
+    }
+
+    const result = await db.run(`
+        INSERT INTO lagerplaetze
+        (user_id, halle, lagerplatz, pruefziffer, notiz)
+        VALUES (?, ?, ?, ?, ?)
+    `, req.user.id, halle, lagerplatz, pruefziffer, notiz);
+
+    res.json({ success: true, id: result.lastInsertRowid });
+});
+
+app.put("/api/lagerplaetze/:id", requireLogin, async (req, res) => {
+    const { halle, lagerplatz, pruefziffer, notiz = "" } = req.body;
+
+    await db.run(`
+        UPDATE lagerplaetze
+        SET halle = ?, lagerplatz = ?, pruefziffer = ?, notiz = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND user_id = ?
+    `, halle, lagerplatz, pruefziffer, notiz, req.params.id, req.user.id);
+
+    res.json({ success: true });
+});
+
+app.delete("/api/lagerplaetze/:id", requireLogin, async (req, res) => {
+    await db.run(`
+        DELETE FROM lagerplaetze
+        WHERE id = ? AND user_id = ?
+    `, req.params.id, req.user.id);
+
+    res.json({ success: true });
+});
+
+
+/* =========================
+   Lagermeeting-Protokolle
+========================= */
+
+app.get("/api/lagermeeting-protokolle", requireLogin, async (req, res) => {
+    const rows = await db.all(`
+        SELECT * FROM lagermeeting_protokolle
+        WHERE user_id = ?
+        ORDER BY created_at DESC, id DESC
+    `, req.user.id);
+
+    res.json(rows);
+});
+
+app.post("/api/lagermeeting-protokolle", requireLogin, async (req, res) => {
+    const { protokoll_nummer, notiz = "" } = req.body;
+
+    if (!protokoll_nummer) {
+        return res.status(400).json({ error: "Protokollnummer ist erforderlich." });
+    }
+
+    const result = await db.run(`
+        INSERT INTO lagermeeting_protokolle
+        (user_id, protokoll_nummer, notiz)
+        VALUES (?, ?, ?)
+    `, req.user.id, protokoll_nummer, notiz);
+
+    res.json({ success: true, id: result.lastInsertRowid });
+});
+
+app.put("/api/lagermeeting-protokolle/:id", requireLogin, async (req, res) => {
+    const { protokoll_nummer, notiz = "" } = req.body;
+
+    await db.run(`
+        UPDATE lagermeeting_protokolle
+        SET protokoll_nummer = ?, notiz = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND user_id = ?
+    `, protokoll_nummer, notiz, req.params.id, req.user.id);
+
+    res.json({ success: true });
+});
+
+app.delete("/api/lagermeeting-protokolle/:id", requireLogin, async (req, res) => {
+    await db.run(`
+        DELETE FROM lagermeeting_protokolle
+        WHERE id = ? AND user_id = ?
+    `, req.params.id, req.user.id);
+
+    res.json({ success: true });
+});
 
 app.listen(PORT, "0.0.0.0", () => {
     console.log("");

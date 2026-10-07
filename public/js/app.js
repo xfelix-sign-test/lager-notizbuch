@@ -370,7 +370,517 @@ async function openSection(section) {
         return;
     }
 
+    if (section === "lagerplaetze") {
+
+        await renderLagerplaetze();
+
+        return;
+    }
+
+    if (section === "lagermeeting") {
+
+        await renderLagermeeting();
+
+        return;
+    }
+
     await renderNotes(section);
+}
+
+
+
+/* =========================================
+   LAGERPLÄTZE
+   ========================================= */
+
+async function renderLagerplaetze() {
+    const response = await fetch("/api/lagerplaetze");
+
+    if (!response.ok) {
+        sectionContent.innerHTML = "<p>Lagerplätze konnten nicht geladen werden.</p>";
+        return;
+    }
+
+    const lagerplaetze = await response.json();
+    const hallen = ["Halle 1", "Halle 2", "Halle 3", "Abpackhalle"];
+
+    sectionContent.innerHTML = `
+        <div class="section-heading">
+            <div>
+                <h2>Lagerplätze</h2>
+                <p>Hallen und Lagerplätze verwalten</p>
+            </div>
+        </div>
+
+        <div style="margin:20px 0;">
+            <input
+                id="lagerplatzSuche"
+                type="search"
+                placeholder="Lagerplatz, Prüfziffer oder Notiz suchen..."
+                style="width:100%;box-sizing:border-box;"
+            >
+        </div>
+
+        <div id="lagerhallen">
+            ${hallen.map((halle, index) => `
+                <div class="settings-card lagerhalle-card" style="margin-bottom:12px;">
+                    <button
+                        type="button"
+                        class="lagerhalle-toggle"
+                        data-halle="${escapeHtml(halle)}"
+                        style="width:100%;display:flex;align-items:center;justify-content:space-between;background:none;border:0;padding:4px 0;cursor:pointer;text-align:left;"
+                    >
+                        <strong style="font-size:18px;">${escapeHtml(halle)}</strong>
+                        <span class="lagerhalle-arrow">›</span>
+                    </button>
+
+                    <div
+                        class="lagerhalle-content"
+                        data-halle-content="${escapeHtml(halle)}"
+                        style="display:none;margin-top:16px;"
+                    ></div>
+                </div>
+            `).join("")}
+        </div>
+    `;
+
+    const renderHalle = (halle, suche = "") => {
+        const content = document.querySelector(
+            `[data-halle-content="${halle}"]`
+        );
+
+        const sucheText = suche.toLowerCase().trim();
+
+        const items = lagerplaetze.filter(item =>
+            item.halle === halle &&
+            (
+                !sucheText ||
+                item.lagerplatz.toLowerCase().includes(sucheText) ||
+                item.pruefziffer.toLowerCase().includes(sucheText) ||
+                (item.notiz || "").toLowerCase().includes(sucheText)
+            )
+        );
+
+        content.innerHTML = `
+            <button
+                type="button"
+                class="primary-button"
+                data-add-lagerplatz="${escapeHtml(halle)}"
+                style="margin-bottom:14px;"
+            >
+                + Lagerplatz
+            </button>
+
+            ${
+                items.length
+                ? items.map(item => `
+                    <div class="note-card" style="margin-bottom:10px;">
+                        <strong>${escapeHtml(item.lagerplatz)}</strong>
+                        <div style="margin-top:6px;">
+                            Prüfziffer: ${escapeHtml(item.pruefziffer)}
+                        </div>
+
+                        ${
+                            item.notiz
+                            ? `<div style="margin-top:6px;">${escapeHtml(item.notiz)}</div>`
+                            : ""
+                        }
+
+                        <div style="display:flex;gap:8px;margin-top:12px;">
+                            <button
+                                type="button"
+                                class="secondary-button"
+                                data-edit-lagerplatz="${item.id}"
+                            >Bearbeiten</button>
+
+                            <button
+                                type="button"
+                                class="secondary-button"
+                                data-delete-lagerplatz="${item.id}"
+                            >Löschen</button>
+                        </div>
+                    </div>
+                `).join("")
+                : `<p style="opacity:.7;">Keine Lagerplätze vorhanden.</p>`
+            }
+        `;
+
+        content.querySelectorAll("[data-add-lagerplatz]").forEach(btn => {
+            btn.onclick = () => showLagerplatzForm(btn.dataset.addLagerplatz);
+        });
+
+        content.querySelectorAll("[data-edit-lagerplatz]").forEach(btn => {
+            const item = lagerplaetze.find(x => String(x.id) === btn.dataset.editLagerplatz);
+            btn.onclick = () => showLagerplatzForm(item);
+        });
+
+        content.querySelectorAll("[data-delete-lagerplatz]").forEach(btn => {
+            btn.onclick = async () => {
+                if (!confirm("Lagerplatz wirklich löschen?")) return;
+
+                await fetch(`/api/lagerplaetze/${btn.dataset.deleteLagerplatz}`, {
+                    method: "DELETE"
+                });
+
+                await renderLagerplaetze();
+            };
+        });
+    };
+
+    document.querySelectorAll(".lagerhalle-toggle").forEach(toggle => {
+        toggle.onclick = () => {
+            const content = document.querySelector(
+                `[data-halle-content="${toggle.dataset.halle}"]`
+            );
+            const arrow = toggle.querySelector(".lagerhalle-arrow");
+
+            if (content.style.display === "none") {
+                content.style.display = "block";
+                arrow.textContent = "⌄";
+                renderHalle(toggle.dataset.halle);
+            } else {
+                content.style.display = "none";
+                arrow.textContent = "›";
+            }
+        };
+    });
+
+    document.getElementById("lagerplatzSuche").oninput = (event) => {
+        const suche = event.target.value;
+
+        document.querySelectorAll(".lagerhalle-toggle").forEach(toggle => {
+            const content = document.querySelector(
+                `[data-halle-content="${toggle.dataset.halle}"]`
+            );
+
+            const hatTreffer = lagerplaetze.some(item =>
+                item.halle === toggle.dataset.halle &&
+                (
+                    !suche.trim() ||
+                    item.lagerplatz.toLowerCase().includes(suche.toLowerCase()) ||
+                    item.pruefziffer.toLowerCase().includes(suche.toLowerCase()) ||
+                    (item.notiz || "").toLowerCase().includes(suche.toLowerCase())
+                )
+            );
+
+            if (suche.trim()) {
+                content.style.display = hatTreffer ? "block" : "none";
+                toggle.querySelector(".lagerhalle-arrow").textContent =
+                    hatTreffer ? "⌄" : "›";
+
+                if (hatTreffer) {
+                    renderHalle(toggle.dataset.halle, suche);
+                }
+            } else {
+                content.style.display = "none";
+                toggle.querySelector(".lagerhalle-arrow").textContent = "›";
+            }
+        });
+    };
+}
+
+function showLagerplatzForm(halle, existing = null) {
+
+    sectionContent.innerHTML = `
+        <div class="section-heading">
+            <div>
+                <h2>${existing ? "Lagerplatz bearbeiten" : "Neuer Lagerplatz"}</h2>
+                <p>${escapeHtml(halle)}</p>
+            </div>
+        </div>
+
+        <form id="lagerplatzForm" class="settings-card">
+
+            <label>
+                Lagerplatz
+                <input
+                    id="lagerplatzInput"
+                    type="text"
+                    required
+                    value="${existing ? escapeHtml(existing.lagerplatz) : ""}"
+                >
+            </label>
+
+            <label>
+                Prüfziffer
+                <input
+                    id="pruefzifferInput"
+                    type="text"
+                    required
+                    value="${existing ? escapeHtml(existing.pruefziffer) : ""}"
+                >
+            </label>
+
+            <label>
+                Notiz (optional)
+                <textarea
+                    id="lagerplatzNotizInput"
+                    rows="5"
+                >${existing ? escapeHtml(existing.notiz || "") : ""}</textarea>
+            </label>
+
+            <div style="display:flex;gap:10px;margin-top:15px;">
+                <button class="primary-button" type="submit">
+                    Speichern
+                </button>
+
+                <button
+                    class="secondary-button"
+                    type="button"
+                    id="cancelLagerplatz"
+                >
+                    Abbrechen
+                </button>
+            </div>
+        </form>
+    `;
+
+    document.getElementById("cancelLagerplatz").onclick =
+        renderLagerplaetze;
+
+    document.getElementById("lagerplatzForm").onsubmit = async event => {
+        event.preventDefault();
+
+        const body = {
+            halle,
+            lagerplatz: document.getElementById("lagerplatzInput").value.trim(),
+            pruefziffer: document.getElementById("pruefzifferInput").value.trim(),
+            notiz: document.getElementById("lagerplatzNotizInput").value
+        };
+
+        const url = existing
+            ? `/api/lagerplaetze/${existing.id}`
+            : "/api/lagerplaetze";
+
+        await fetch(url, {
+            method: existing ? "PUT" : "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+        });
+
+        await renderLagerplaetze();
+    };
+}
+
+
+
+/* =========================================
+   LAGERMEETING-PROTOKOLLE
+   ========================================= */
+
+async function renderLagermeeting() {
+
+    const response = await fetch("/api/lagermeeting-protokolle");
+
+    if (!response.ok) {
+        sectionContent.innerHTML = "<p>Protokolle konnten nicht geladen werden.</p>";
+        return;
+    }
+
+    const protokolle = await response.json();
+
+    sectionContent.innerHTML = `
+        <div class="section-heading">
+            <div>
+                <h2>Lagermeeting-Protokolle</h2>
+                <p>Besprechungen dokumentieren und verwalten</p>
+            </div>
+
+            <button
+                id="addLagermeeting"
+                class="primary-button"
+                type="button"
+            >
+                + Neues Protokoll
+            </button>
+        </div>
+
+        <div style="margin-top:20px;">
+            ${
+                protokolle.length
+                ? protokolle.map(item => `
+                    <div
+                        class="note-card"
+                        style="margin-bottom:12px;cursor:pointer;"
+                        data-open-lagermeeting="${item.id}"
+                    >
+                        <strong>
+                            ${escapeHtml(item.protokoll_nummer)}
+                        </strong>
+
+                        <div style="display:flex;gap:8px;margin-top:12px;">
+                            <button
+                                class="secondary-button"
+                                type="button"
+                                data-edit-lagermeeting="${item.id}"
+                            >
+                                Bearbeiten
+                            </button>
+
+                            <button
+                                class="secondary-button"
+                                type="button"
+                                data-delete-lagermeeting="${item.id}"
+                            >
+                                Löschen
+                            </button>
+                        </div>
+                    </div>
+                `).join("")
+                : "<p>Noch keine Lagermeeting-Protokolle vorhanden.</p>"
+            }
+        </div>
+    `;
+
+    document.getElementById("addLagermeeting").onclick =
+        () => showLagermeetingForm();
+
+    document.querySelectorAll("[data-open-lagermeeting]").forEach(card => {
+        card.addEventListener("click", event => {
+            if (event.target.closest("button")) return;
+
+            const item = protokolle.find(
+                entry => String(entry.id) === String(card.dataset.openLagermeeting)
+            );
+
+            if (item) {
+                showLagermeetingForm(item, true);
+            }
+        });
+    });
+
+    document.querySelectorAll("[data-edit-lagermeeting]").forEach(button => {
+        button.addEventListener("click", () => {
+            const item = protokolle.find(
+                entry => String(entry.id) === String(button.dataset.editLagermeeting)
+            );
+
+            if (item) {
+                showLagermeetingForm(item);
+            }
+        });
+    });
+
+    document.querySelectorAll("[data-delete-lagermeeting]").forEach(button => {
+        button.addEventListener("click", async () => {
+            if (!confirm("Dieses Protokoll wirklich löschen?")) {
+                return;
+            }
+
+            await fetch(
+                `/api/lagermeeting-protokolle/${button.dataset.deleteLagermeeting}`,
+                { method: "DELETE" }
+            );
+
+            await renderLagermeeting();
+        });
+    });
+}
+
+
+function showLagermeetingForm(existing = null, readOnly = false) {
+
+    sectionContent.innerHTML = `
+        <div class="section-heading">
+            <div>
+                <h2>
+                    ${existing ? escapeHtml(existing.protokoll_nummer) : "Neues Lagermeeting-Protokoll"}
+                </h2>
+
+                <p>
+                    ${readOnly ? "Protokoll anzeigen" : "Protokoll bearbeiten"}
+                </p>
+            </div>
+        </div>
+
+        <form id="lagermeetingForm" class="settings-card">
+
+            <label>
+                Protokoll Nr.
+                <input
+                    id="lagermeetingNummer"
+                    type="text"
+                    required
+                    ${readOnly ? "readonly" : ""}
+                    value="${existing ? escapeHtml(existing.protokoll_nummer) : ""}"
+                >
+            </label>
+
+            <label>
+                Was ist beim Lagermeeting passiert?
+                <textarea
+                    id="lagermeetingNotiz"
+                    rows="18"
+                    ${readOnly ? "readonly" : ""}
+                >${existing ? escapeHtml(existing.notiz || "") : ""}</textarea>
+            </label>
+
+            ${
+                readOnly
+                ? `
+                    <button
+                        class="secondary-button"
+                        type="button"
+                        id="backLagermeeting"
+                    >
+                        Zurück
+                    </button>
+                `
+                : `
+                    <div style="display:flex;gap:10px;margin-top:15px;">
+                        <button class="primary-button" type="submit">
+                            Speichern
+                        </button>
+
+                        <button
+                            class="secondary-button"
+                            type="button"
+                            id="cancelLagermeeting"
+                        >
+                            Abbrechen
+                        </button>
+                    </div>
+                `
+            }
+        </form>
+    `;
+
+    if (readOnly) {
+        document.getElementById("backLagermeeting").onclick =
+            renderLagermeeting;
+        return;
+    }
+
+    document.getElementById("cancelLagermeeting").onclick =
+        renderLagermeeting;
+
+    document.getElementById("lagermeetingForm").onsubmit = async event => {
+        event.preventDefault();
+
+        const body = {
+            protokoll_nummer:
+                document.getElementById("lagermeetingNummer").value.trim(),
+
+            notiz:
+                document.getElementById("lagermeetingNotiz").value
+        };
+
+        const url = existing
+            ? `/api/lagermeeting-protokolle/${existing.id}`
+            : "/api/lagermeeting-protokolle";
+
+        await fetch(url, {
+            method: existing ? "PUT" : "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+        });
+
+        await renderLagermeeting();
+    };
 }
 
 
