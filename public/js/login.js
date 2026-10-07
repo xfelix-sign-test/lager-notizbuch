@@ -70,6 +70,24 @@ async function getLocalSession() {
 async function checkRememberedLogin() {
     if (sessionStorage.getItem("lager-logout") === "1") {
         sessionStorage.removeItem("lager-logout");
+
+        try {
+            const db = await new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+
+            if (db.objectStoreNames.contains("session")) {
+                const tx = db.transaction("session", "readwrite");
+                tx.objectStore("session").clear();
+            }
+
+            db.close();
+        } catch (error) {
+            console.warn("Alte Sitzung konnte nicht gelöscht werden:", error);
+        }
+
         return;
     }
 

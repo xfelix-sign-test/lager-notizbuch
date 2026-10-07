@@ -160,60 +160,27 @@ async function checkLogin() {
                 response.status
             );
 
-            const localSession = await new Promise(resolve => {
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-                request.onsuccess = () => {
-                    const db = request.result;
-
-                    if (!db.objectStoreNames.contains("session")) {
-                        resolve(null);
-                        return;
-                    }
-
-                    const tx = db.transaction("session", "readonly");
-                    const get = tx.objectStore("session").get("current-user");
-
-                    get.onsuccess = () => {
-                        const session = get.result;
-
-                        if (
-                            session?.token &&
-                            session?.expiresAt &&
-                            Date.now() < session.expiresAt
-                        ) {
-                            resolve(session);
-                        } else {
-                            resolve(null);
-                        }
-                    };
-
-                    get.onerror = () => resolve(null);
-                };
-
-                request.onerror = () => resolve(null);
-            });
-
-            if (localSession?.token) {
-                mobileToken = localSession.token;
-                console.log("24h-Login: gespeicherter Token wird verwendet.");
-
-                const retry = await fetch("/api/me", {
-                    method: "GET",
-                    cache: "no-store"
+            try {
+                const db = await new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
                 });
 
-                if (retry.ok) {
-                    const localUser = await retry.json();
-
-                    if (localUser.authenticated) {
-                        return checkLogin();
-                    }
+                if (db.objectStoreNames.contains("session")) {
+                    const tx = db.transaction("session", "readwrite");
+                    tx.objectStore("session").clear();
                 }
+
+                db.close();
+            } catch (error) {
+                console.warn(
+                    "Lokale Sitzung konnte nicht gelöscht werden:",
+                    error
+                );
             }
 
-            document.body.innerHTML =
-                '<pre style="padding:20px">Anmeldung erforderlich.</pre>';
+            window.location.href = "/";
             return;
         }
 
@@ -3585,6 +3552,9 @@ document
         async () => {
 
             sessionStorage.setItem("lager-logout", "1");
+
+            mobileToken = null;
+            mobileTokenPromise = null;
 
             try {
                 await fetch(
