@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import multer from "multer";
 import cors from "cors";
 import session from "express-session";
 import SQLiteStoreFactory from "connect-sqlite3";
@@ -14,11 +15,44 @@ import crypto from "crypto";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
+
+const DIENSTPLAN_DIR = path.join(DATA_DIR, "dienstplaene");
+fs.mkdirSync(DIENSTPLAN_DIR, { recursive: true });
+
+const dienstplanStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, DIENSTPLAN_DIR);
+    },
+    filename: (req, file, cb) => {
+        const safeName = file.originalname
+            .replace(/[^a-zA-Z0-9._-]/g, "_");
+
+        cb(
+            null,
+            `${req.user.id}_${Date.now()}_${safeName}`
+        );
+    }
+});
+
+const dienstplanUpload = multer({
+    storage: dienstplanStorage,
+    limits: {
+        fileSize: 20 * 1024 * 1024
+    },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype !== "application/pdf") {
+            return cb(new Error("Nur PDF-Dateien sind erlaubt."));
+        }
+
+        cb(null, true);
+    }
+});
 
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -100,7 +134,17 @@ await db.exec(`
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
-    CREATE TABLE IF NOT EXISTS user_settings (
+    CREATE TABLE IF NOT EXISTS dienstplaene (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    monat TEXT NOT NULL,
+    dateiname TEXT NOT NULL,
+    dateipfad TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_settings (
         user_id INTEGER PRIMARY KEY,
         display_name TEXT NOT NULL DEFAULT '',
         theme TEXT NOT NULL DEFAULT 'dark',
@@ -1900,6 +1944,107 @@ app.delete("/api/lagermeeting-protokolle/:id", requireLogin, async (req, res) =>
 
     res.json({ success: true });
 });
+
+
+/* =========================
+   Dienstpläne
+========================= */
+
+app.get("/api/dienstplaene", requireLogin, async (req, res) => {
+    const rows = await db.all(`
+        SELECT id, monat, dateiname, created_at, updated_at
+        FROM dienstplaene
+        WHERE user_id = ?
+        ORDER BY created_at DESC, id DESC
+    `, req.user.id);
+
+    res.json(rows);
+});
+
+app.get("/api/dienstplaene/:id/pdf", requireLogin, async (req, res) => {
+    const row = await db.get(`
+        SELECT *
+        FROM dienstplaene
+        WHERE id = ? AND user_id = ?
+    `, req.params.id, req.user.id);
+
+    if (!row) {
+        return res.status(404).json({
+            error: "Dienstplan nicht gefunden."
+        });
+    }
+
+    res.sendFile(row.dateipfad);
+});
+
+app.post(
+    "/api/dienstplaene",
+    requireLogin,
+    dienstplanUpload.single("pdf"),
+    async (req, res) => {
+        if (!req.file) {
+            return res.status(400).json({
+                error: "Bitte eine PDF-Datei auswählen."
+            });
+        }
+
+        const monat = String(req.body.monat || "").trim();
+
+        if (!monat) {
+            fs.unlinkSync(req.file.path);
+
+            return res.status(400).json({
+                error: "Bitte einen Monat angeben."
+            });
+        }
+
+        const result = await db.run(`
+            INSERT INTO dienstplaene
+            (user_id, monat, dateiname, dateipfad)
+            VALUES (?, ?, ?, ?)
+        `,
+            req.user.id,
+            monat,
+            req.file.originalname,
+            req.file.path
+        );
+
+        res.json({
+            success: true,
+            id: result.lastID
+        });
+    }
+);
+
+app.delete("/api/dienstplaene/:id", requireLogin, async (req, res) => {
+    const row = await db.get(`
+        SELECT dateipfad
+        FROM dienstplaene
+        WHERE id = ? AND user_id = ?
+    `, req.params.id, req.user.id);
+
+    if (!row) {
+        return res.status(404).json({
+            error: "Dienstplan nicht gefunden."
+        });
+    }
+
+    await db.run(`
+        DELETE FROM dienstplaene
+        WHERE id = ? AND user_id = ?
+    `, req.params.id, req.user.id);
+
+    try {
+        if (fs.existsSync(row.dateipfad)) {
+            fs.unlinkSync(row.dateipfad);
+        }
+    } catch (error) {
+        console.error("Dienstplan-Datei konnte nicht gelöscht werden:", error);
+    }
+
+    res.json({ success: true });
+});
+
 
 app.listen(PORT, "0.0.0.0", () => {
     console.log("");

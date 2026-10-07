@@ -3728,3 +3728,26 @@ button,
 .menu-card {
     touch-action: manipulation;
 }
+
+/* Dienstplan PDF Upload */
+#dienstplan-pdf {
+    display: block;
+    width: 100%;
+    min-height: 48px;
+    padding: 12px;
+    margin: 8px 0 18px;
+    border: 2px dashed #bbb;
+    border-radius: 12px;
+    background: #f8f8f8;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+#dienstplan-pdf::file-selector-button {
+    margin-right: 12px;
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+}

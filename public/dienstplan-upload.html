@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dienstplan hochladen</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 30px 18px;
+            background: #f5f5f5;
+        }
+
+        .box {
+            max-width: 520px;
+            margin: 40px auto;
+            background: white;
+            padding: 25px;
+            border-radius: 18px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.08);
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        label {
+            display: block;
+            margin: 18px 0 8px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px;
+            font-size: 16px;
+        }
+
+        input[type="file"] {
+            border: 2px dashed #bbb;
+            border-radius: 12px;
+            background: #fafafa;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 22px;
+            padding: 14px;
+            border: 0;
+            border-radius: 10px;
+            background: #e30613;
+            color: white;
+            font-size: 17px;
+            cursor: pointer;
+        }
+
+        #status {
+            margin-top: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h1>📅 Dienstplan hochladen</h1>
+
+    <form id="upload-form">
+
+        <label for="monat">Monat</label>
+        <input
+            id="monat"
+            type="text"
+            placeholder="z. B. Oktober 2026"
+            required
+        >
+
+        <label for="pdf">PDF-Datei</label>
+        <input
+            id="pdf"
+            type="file"
+            accept=".pdf,application/pdf"
+            required
+        >
+
+        <button type="submit">
+            Dienstplan hochladen
+        </button>
+
+        <div id="status"></div>
+    </form>
+</div>
+
+<script>
+const form = document.getElementById("upload-form");
+const status = document.getElementById("status");
+
+form.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const monat = document.getElementById("monat").value.trim();
+    const file = document.getElementById("pdf").files[0];
+
+    if (!monat || !file) {
+        status.textContent = "Bitte Monat und PDF auswählen.";
+        return;
+    }
+
+    if (file.type !== "application/pdf") {
+        status.textContent = "Bitte nur PDF-Dateien auswählen.";
+        return;
+    }
+
+    const data = new FormData();
+    data.append("monat", monat);
+    data.append("pdf", file);
+
+    status.textContent = "Upload läuft...";
+
+    try {
+        const response = await fetch("/api/dienstplaene", {
+            method: "POST",
+            credentials: "include",
+            body: data
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || "Upload fehlgeschlagen.");
+        }
+
+        status.textContent = "✅ Dienstplan erfolgreich hochgeladen.";
+        form.reset();
+
+    } catch (error) {
+        console.error(error);
+        status.textContent = "❌ " + error.message;
+    }
+});
+</script>
+
+</body>
+</html>
