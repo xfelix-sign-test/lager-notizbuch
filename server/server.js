@@ -930,7 +930,7 @@ app.post("/api/contacts", requireLogin, async (req, res) => {
 
         if (mobile && !/^[0-9]{1,40}$/.test(mobile)) {
             return res.status(400).json({
-                error: "Die Mobilnummer darf nur Ziffern und maximal 20 Stellen enthalten."
+                error: "Die Mobilnummer darf nur Ziffern und maximal 40 Stellen enthalten."
             });
         }
 
@@ -1004,7 +1004,7 @@ app.put("/api/contacts/:id", requireLogin, async (req, res) => {
 
         if (mobile && !/^[0-9]{1,40}$/.test(mobile)) {
             return res.status(400).json({
-                error: "Die Mobilnummer darf nur Ziffern und maximal 20 Stellen enthalten."
+                error: "Die Mobilnummer darf nur Ziffern und maximal 40 Stellen enthalten."
             });
         }
 

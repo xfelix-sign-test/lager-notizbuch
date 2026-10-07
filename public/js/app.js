@@ -1354,7 +1354,7 @@ document
         ) {
 
             alert(
-                "Die Mobilnummer darf maximal 20 Ziffern enthalten."
+                "Die Mobilnummer darf maximal 40 Ziffern enthalten."
             );
 
             return;
