@@ -337,6 +337,13 @@ async function openSection(section) {
         return;
     }
 
+    if (section === "dienstplan") {
+
+        await renderDienstplan();
+
+        return;
+    }
+
     if (section === "lagerplaetze") {
 
         await renderLagerplaetze();
@@ -3504,31 +3511,37 @@ backButton.addEventListener(
    MENÜ
    ========================================= */
 
-menuCards.forEach((card) => {
+/* =========================================
+   MENÜ-NAVIGATION
+   ========================================= */
 
-    card.addEventListener(
-        "click",
-        () => {
+function bindMenuCards() {
+    document.querySelectorAll("#menuGrid .menu-card").forEach(card => {
 
-            const section =
-                card.dataset.section;
+        card.onclick = async function(event) {
+            event.preventDefault();
+            event.stopPropagation();
 
-            console.log(
-                "Öffne Bereich:",
-                section
-            );
+            const section = this.dataset.section;
 
-            openSection(section);
+            console.log("Menükarte geklickt:", section);
 
-        }
-    );
+            if (!section) return;
 
-});
+            await openSection(section);
+        };
 
+    });
+}
+
+
+bindMenuCards();
 
 /* =========================================
    FEHLERANZEIGE
    ========================================= */
+
+
 
 function showError(message) {
 
@@ -3612,3 +3625,295 @@ document
    ========================================= */
 
 checkLogin();
+
+    
+function backToMenu() {
+    currentSection = null;
+
+    sectionView.classList.add("hidden");
+    menuGrid.classList.remove("hidden");
+    welcome.classList.remove("hidden");
+
+    // Menü-Navigation nach jedem Bereich neu herstellen
+    document.querySelectorAll("#menuGrid .menu-card").forEach(card => {
+        card.onclick = null;
+
+        card.onclick = async function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const section = this.dataset.section;
+
+            console.log("Menükarte geklickt:", section);
+
+            if (!section) {
+                return;
+            }
+
+            await openSection(section);
+        };
+    });
+
+    window.scrollTo(0, 0);
+}
+
+
+
+/* =========================================
+   DIENSTPLAN
+   ========================================= */
+
+async function renderDienstplan() {
+    sectionContent.innerHTML = `
+        <div class="section-header">
+            <button class="back-button" onclick="backToMenu()">‹ Zurück</button>
+            <h1>Dienstplan</h1>
+        </div>
+
+        <div class="card">
+            <h2>Neuen Dienstplan hinzufügen</h2>
+
+            <form id="dienstplan-form">
+                <label for="dienstplan-monat">Monat</label>
+                <input
+                    type="text"
+                    id="dienstplan-monat"
+                    placeholder="z. B. Oktober 2026"
+                    required
+                >
+
+                <label for="dienstplan-pdf">PDF-Datei</label>
+
+                <input
+                    type="file"
+                    id="dienstplan-pdf"
+                    accept=".pdf,application/pdf"
+                    required
+                >
+
+                <div id="dienstplan-dateiname" style="margin:10px 0 18px; font-size:14px;">
+                    Keine Datei ausgewählt
+                </div>
+
+                <button type="submit" class="primary-button">
+                    Dienstplan speichern
+                </button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Vorhandene Dienstpläne</h2>
+            <div id="dienstplan-list">
+                <p>Lade Dienstpläne...</p>
+            </div>
+        </div>
+    `;
+
+    const form = document.getElementById("dienstplan-form");
+
+    document.getElementById("dienstplan-pdf").addEventListener("change", event => {
+        const file = event.target.files[0];
+        document.getElementById("dienstplan-dateiname").textContent =
+            file ? file.name : "Keine Datei ausgewählt";
+    });
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const monat = document.getElementById("dienstplan-monat").value.trim();
+        const fileInput = document.getElementById("dienstplan-pdf");
+        const file = fileInput.files[0];
+
+        if (!monat || !file) {
+            alert("Bitte Monat und PDF auswählen.");
+            return;
+        }
+
+        if (file.type !== "application/pdf") {
+            alert("Bitte nur eine PDF-Datei auswählen.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("monat", monat);
+        formData.append("pdf", file);
+
+        try {
+            const response = await fetch("/api/dienstplaene", {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    Authorization: `Bearer ${await getMobileToken()}`
+                },
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Dienstplan konnte nicht gespeichert werden.");
+            }
+
+            form.reset();
+            await loadDienstplaene();
+
+            alert("Dienstplan gespeichert.");
+        } catch (error) {
+            console.error(error);
+            alert(error.message);
+        }
+    });
+
+    await loadDienstplaene();
+}
+
+async function loadDienstplaene() {
+    const container = document.getElementById("dienstplan-list");
+
+    if (!container) return;
+
+    try {
+        const response = await fetch("/api/dienstplaene", {
+            credentials: "include",
+            headers: {
+                Authorization: `Bearer ${await getMobileToken()}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error("Dienstpläne konnten nicht geladen werden.");
+        }
+
+        const dienstplaene = await response.json();
+
+        if (!dienstplaene.length) {
+            container.innerHTML = "<p>Noch keine Dienstpläne vorhanden.</p>";
+            return;
+        }
+
+        container.innerHTML = dienstplaene.map(plan => `
+            <div class="dienstplan-item">
+                <button
+                    type="button"
+                    class="dienstplan-header"
+                    onclick="toggleDienstplan(${plan.id})"
+                >
+                    <span>📅 ${escapeHtml(plan.monat)}</span>
+                    <span>›</span>
+                </button>
+
+                <div
+                    id="dienstplan-content-${plan.id}"
+                    class="dienstplan-content"
+                    style="display:none;"
+                >
+                    <p>${escapeHtml(plan.dateiname)}</p>
+
+                    <div
+                        id="dienstplan-pdf-${plan.id}"
+                        style="width:100%; min-height:700px; border:1px solid #ddd; border-radius:12px; overflow:hidden;"
+                    >
+                        <p style="padding:20px;">PDF wird geladen...</p>
+                    </div>
+
+                    <button
+                        type="button"
+                        class="danger-button"
+                        onclick="deleteDienstplan(${plan.id})"
+                    >
+                        Dienstplan löschen
+                    </button>
+                </div>
+            </div>
+        `).join("");
+
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = `
+            <p>Fehler beim Laden der Dienstpläne.</p>
+        `;
+    }
+}
+
+async function loadDienstplanPdf(id) {
+    const container = document.getElementById(`dienstplan-pdf-${id}`);
+
+    if (!container) return;
+
+    try {
+        const token = await getMobileToken();
+
+        const response = await fetch(`/api/dienstplaene/${id}/pdf`, {
+            credentials: "include",
+            headers: token ? {
+                Authorization: `Bearer ${token}`
+            } : {}
+        });
+
+        if (!response.ok) {
+            throw new Error("PDF konnte nicht geladen werden.");
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+
+        container.innerHTML = `
+            <iframe
+                src="${url}"
+                style="width:100%; height:700px; border:0;"
+                title="Dienstplan"
+            ></iframe>
+        `;
+
+    } catch (error) {
+        console.error(error);
+
+        container.innerHTML = `
+            <p style="padding:20px;">
+                ❌ PDF konnte nicht geladen werden.
+            </p>
+        `;
+    }
+}
+
+function toggleDienstplan(id) {
+    const content = document.getElementById(`dienstplan-content-${id}`);
+
+    if (!content) return;
+
+    const opening = content.style.display === "none";
+
+    content.style.display = opening ? "block" : "none";
+
+    if (opening) {
+        loadDienstplanPdf(id);
+    }
+}
+
+async function deleteDienstplan(id) {
+    if (!confirm("Diesen Dienstplan wirklich löschen?")) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/dienstplaene/${id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers: {
+                Authorization: `Bearer ${await getMobileToken()}`
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Dienstplan konnte nicht gelöscht werden.");
+        }
+
+        await loadDienstplaene();
+
+    } catch (error) {
+        console.error(error);
+        alert(error.message);
+    }
+}
