@@ -29,7 +29,7 @@ export async function initLocalDatabase() {
 
 function openIndexedDB() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, 1);
+        const request = indexedDB.open(DB_NAME, 2);
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
@@ -76,6 +76,13 @@ function openIndexedDB() {
             if (!db.objectStoreNames.contains("sync")) {
                 db.createObjectStore(
                     "sync",
+                    { keyPath: "key" }
+                );
+            }
+
+            if (!db.objectStoreNames.contains("session")) {
+                db.createObjectStore(
+                    "session",
                     { keyPath: "key" }
                 );
             }

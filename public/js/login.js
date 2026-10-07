@@ -1,7 +1,7 @@
 const API_BASE_URL = "http://162.120.6.76:3000";
 
 const DB_NAME = "lager-notizbuch";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const form = document.getElementById("loginForm");
 const errorElement = document.getElementById("error");

@@ -1,6 +1,6 @@
 const API_BASE_URL = "http://162.120.6.76:3000";
 const DB_NAME = "lager-notizbuch";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const originalFetch = window.fetch.bind(window);
 
@@ -17,7 +17,15 @@ async function getMobileToken() {
     }
 
     mobileTokenPromise = new Promise(resolve => {
-        const request = indexedDB.open("lager-notizbuch");
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+
+            if (!db.objectStoreNames.contains("session")) {
+                db.createObjectStore("session", { keyPath: "key" });
+            }
+        };
 
         request.onsuccess = () => {
             const db = request.result;
